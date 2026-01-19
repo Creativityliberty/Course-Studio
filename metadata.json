@@ -1,0 +1,8 @@
+{
+  "name": "Course Studio",
+  "description": "A premium, soft-luxury course creation and mindfulness platform featuring an AI-driven assistant, video management, and an elegant design system.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
