@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-/* Added HelpCircle to the imports from lucide-react to fix the "Cannot find name 'HelpCircle'" error */
-import { ChevronLeft, PlayCircle, FileText, CheckCircle2, ChevronRight, X, User, Trophy, HelpCircle } from 'lucide-react';
+import { ChevronLeft, PlayCircle, FileText, CheckCircle2, ChevronRight, X, Trophy, HelpCircle, ExternalLink, Book, Image as ImageIcon, Info } from 'lucide-react';
 import { Module, Lesson, ContentBlockType } from '../types';
 
 interface CoursePlayerProps {
@@ -13,12 +12,18 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) =
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.modules[0]?.lessons[0] || null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
+  // Fonction pour nettoyer le texte des astérisques de l'IA
+  const cleanText = (text: string) => {
+    return text.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  };
+
   const getEmbedUrl = (url: string) => {
     if (!url) return null;
     let videoId = '';
     if (url.includes('youtube.com/watch?v=')) videoId = url.split('v=')[1]?.split('&')[0];
     else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1]?.split('?')[0];
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    else if (url.includes('vimeo.com/')) videoId = url.split('vimeo.com/')[1];
+    return videoId ? (url.includes('vimeo') ? `https://player.vimeo.com/video/${videoId}` : `https://www.youtube.com/embed/${videoId}`) : null;
   };
 
   const toggleComplete = (id: string) => {
@@ -29,140 +34,126 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) =
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-50 flex animate-in fade-in duration-500 font-sans">
-      {/* Sidebar Navigation */}
-      <div className="w-80 h-full bg-white border-r border-slate-100 flex flex-col shadow-xl">
-        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-          <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-2xl transition-all">
-            <ChevronLeft className="w-5 h-5 text-slate-400" />
+    <div className="fixed inset-0 z-[100] bg-white flex animate-in fade-in duration-500 font-sans text-slate-900">
+      {/* Sidebar Navigation inspired by screenshot 2 */}
+      <div className="w-80 h-full bg-white border-r border-slate-50 flex flex-col">
+        <div className="p-8 flex items-center justify-between">
+          <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all">
+            <ChevronLeft className="w-5 h-5 text-slate-300" />
           </button>
           <div className="text-right">
-             <p className="text-[10px] font-black text-primary uppercase tracking-widest">Aperçu Étudiant</p>
-             <h4 className="text-xs font-black text-slate-400 uppercase tracking-tighter truncate w-32">{course.title}</h4>
+             <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Étudiant</p>
+             <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter truncate w-32">{course.title}</h4>
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-4 space-y-8 no-scrollbar">
+        <div className="flex-grow overflow-y-auto px-4 py-8 space-y-10 no-scrollbar">
           {course.modules.map((mod, mIdx) => (
             <div key={mod.id}>
-              <h5 className="px-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-4">Module {mIdx + 1}</h5>
-              <div className="space-y-2">
+              <h5 className="px-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mb-4">Module {mIdx + 1}</h5>
+              <div className="space-y-1">
                 {mod.lessons.map((less) => (
                   <button 
-                    key={less.id}
-                    onClick={() => setActiveLesson(less)}
-                    className={`w-full p-4 rounded-2xl flex items-start gap-4 transition-all text-left ${activeLesson?.id === less.id ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-slate-50'}`}
+                    key={less.id} 
+                    onClick={() => setActiveLesson(less)} 
+                    className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all text-left group ${activeLesson?.id === less.id ? 'bg-primary/5' : 'hover:bg-slate-50'}`}
                   >
-                    <div className={`mt-0.5 ${completedLessons.has(less.id) ? 'text-emerald-500' : activeLesson?.id === less.id ? 'text-primary' : 'text-slate-200'}`}>
-                      {completedLessons.has(less.id) ? <CheckCircle2 className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
+                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${activeLesson?.id === less.id ? 'bg-white border-primary text-primary shadow-sm' : 'border-slate-100 text-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
+                      <PlayCircle className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className={`text-sm font-bold leading-tight ${activeLesson?.id === less.id ? 'text-primary' : 'text-slate-600'}`}>{less.title}</p>
-                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1 block">5 min</span>
-                    </div>
+                    <span className={`text-sm font-bold tracking-tight ${activeLesson?.id === less.id ? 'text-primary' : 'text-slate-500'}`}>{less.title}</span>
                   </button>
                 ))}
               </div>
             </div>
           ))}
         </div>
-
-        <div className="p-8 bg-slate-50/50 border-t border-slate-100">
-           <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-300">
-                 <Trophy className="w-5 h-5" />
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progression</p>
-                 <p className="text-sm font-black text-slate-700">{completedLessons.size} / {course.modules.reduce((acc, m) => acc + m.lessons.length, 0)}</p>
-              </div>
-           </div>
-           <div className="h-1.5 w-full bg-white rounded-full overflow-hidden shadow-inner">
-              <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(completedLessons.size / course.modules.reduce((acc, m) => acc + m.lessons.length, 0)) * 100}%` }}></div>
-           </div>
-        </div>
       </div>
 
-      {/* Main Content View */}
-      <div className="flex-grow h-full overflow-y-auto bg-white flex flex-col scroll-smooth no-scrollbar">
+      {/* Main Content View with Huge Typography */}
+      <div className="flex-grow h-full overflow-y-auto bg-white flex flex-col scroll-smooth no-scrollbar border-l border-slate-50">
         {activeLesson ? (
           <div className="max-w-4xl mx-auto w-full px-12 py-20">
-            <header className="mb-16">
-               <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4 inline-block">Leçon Active</span>
-               <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4 leading-[1.1]">{activeLesson.title}</h1>
-               <p className="text-slate-400 text-lg font-medium">Découvrez les concepts clés de cette unité pédagogique.</p>
+            <header className="mb-20">
+               <span className="px-6 py-2.5 bg-indigo-50 text-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] mb-8 inline-block">Unité d'apprentissage</span>
+               <h1 className="text-[5.5rem] font-black text-slate-900 tracking-tighter mb-4 leading-[0.9]">{activeLesson.title}</h1>
             </header>
 
-            <div className="space-y-16">
+            <div className="space-y-24">
               {activeLesson.blocks.map((block) => (
-                <div key={block.id} className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                  {block.type === ContentBlockType.VIDEO && block.payload?.url && (
-                    <div className="aspect-video bg-slate-900 rounded-[3rem] overflow-hidden shadow-luxury">
-                       <iframe 
-                        src={getEmbedUrl(block.payload.url)!} 
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                       />
+                <div key={block.id} className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                  
+                  {/* Block Title Cleanup */}
+                  {block.type !== ContentBlockType.IMAGE && (
+                    <h2 className="text-5xl font-black text-slate-900 mb-10 tracking-tight leading-tight">{cleanText(block.title)}</h2>
+                  )}
+
+                  {/* Image Block */}
+                  {block.type === ContentBlockType.IMAGE && block.payload?.imageUrl && (
+                    <div className="rounded-[3.5rem] overflow-hidden shadow-luxury">
+                      <img src={block.payload.imageUrl} className="w-full h-auto" alt={block.payload.imagePrompt} />
                     </div>
                   )}
 
+                  {/* Video Block */}
+                  {block.type === ContentBlockType.VIDEO && (block.payload?.videoUrls?.[0] || block.payload?.url) && (
+                    <div className="aspect-video bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-luxury">
+                       <iframe src={getEmbedUrl(block.payload?.videoUrls?.[0] || block.payload?.url!)!} className="w-full h-full border-0" allowFullScreen />
+                    </div>
+                  )}
+
+                  {/* Text Block Clean Rendering */}
                   {block.type === ContentBlockType.TEXT && (
-                    <div className="prose prose-slate prose-lg max-w-none">
-                       <h3 className="text-2xl font-black text-slate-800 mb-6 tracking-tight">{block.title}</h3>
-                       <div className="text-slate-600 leading-[1.8] whitespace-pre-wrap font-medium">
-                          {block.content}
+                    <div className="space-y-12">
+                       <div className="text-2xl font-medium text-slate-500 leading-[1.6] whitespace-pre-wrap tracking-tight">
+                          {cleanText(block.content)}
                        </div>
+                       {block.payload?.glossary && (
+                         <div className="bg-slate-50 p-12 rounded-[3rem] border border-slate-100">
+                           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-8">Glossaire de la leçon</h4>
+                           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                              {block.payload.glossary.map((g, i) => (
+                                <div key={i}>
+                                  <p className="font-black text-primary text-xs uppercase mb-3 tracking-widest">{g.term}</p>
+                                  <p className="text-xs text-slate-400 leading-relaxed font-medium">{g.definition}</p>
+                                </div>
+                              ))}
+                           </div>
+                         </div>
+                       )}
                     </div>
                   )}
 
-                  {block.type === ContentBlockType.QUIZ && block.payload?.questions && (
-                    <div className="bg-slate-50 rounded-[3rem] p-12 border border-slate-100 shadow-sm">
-                       <div className="flex items-center gap-4 mb-8">
-                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm">
-                             <HelpCircle className="w-6 h-6" />
-                          </div>
-                          <div>
-                             <h4 className="text-xl font-black tracking-tight">{block.title}</h4>
-                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Testez vos connaissances</p>
-                          </div>
-                       </div>
-                       <div className="space-y-10">
-                          {block.payload.questions.map((q, idx) => (
-                            <div key={idx}>
-                               <p className="text-lg font-black text-slate-800 mb-6 leading-tight">{idx + 1}. {q.question}</p>
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {q.options.map((opt, oIdx) => (
-                                    <button key={oIdx} className="p-6 bg-white border border-slate-100 rounded-3xl text-left font-bold text-slate-600 hover:border-primary/40 hover:bg-primary/5 transition-all active:scale-95 shadow-sm">
-                                       {opt}
-                                    </button>
-                                  ))}
-                               </div>
+                  {/* Resource Block */}
+                  {block.type === ContentBlockType.RESOURCE && block.payload?.resources && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {block.payload.resources.map((res, i) => (
+                        <a key={i} href={res.url} target="_blank" className="p-8 bg-white border border-slate-100 rounded-[2.5rem] flex items-center justify-between hover:border-primary/20 transition-all shadow-sm group">
+                            <div className="flex items-center gap-5">
+                              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white transition-all"><ExternalLink className="w-5 h-5" /></div>
+                              <span className="font-black text-slate-900 tracking-tight">{res.label}</span>
                             </div>
-                          ))}
-                       </div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-200">{res.type}</span>
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-
-            <div className="mt-24 pt-12 border-t border-slate-100 flex items-center justify-between">
-               <button onClick={() => toggleComplete(activeLesson.id)} className={`px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs transition-all flex items-center gap-3 ${completedLessons.has(activeLesson.id) ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'bg-slate-900 text-white hover:bg-primary'}`}>
-                  {completedLessons.has(activeLesson.id) ? <CheckCircle2 className="w-5 h-5" /> : null}
-                  {completedLessons.has(activeLesson.id) ? 'Leçon Complétée' : 'Marquer comme terminée'}
-               </button>
-               <button className="flex items-center gap-3 text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] hover:text-primary transition-colors group">
-                  Leçon Suivante <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            
+            <div className="mt-40 py-12 border-t border-slate-100 flex justify-center">
+               <button onClick={() => toggleComplete(activeLesson.id)} className={`px-16 py-8 rounded-full font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 ${completedLessons.has(activeLesson.id) ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-slate-900 text-white hover:bg-primary shadow-slate-200'}`}>
+                  {completedLessons.has(activeLesson.id) ? '✓ Leçon Terminée' : 'Finaliser la leçon'}
                </button>
             </div>
           </div>
         ) : (
-          <div className="flex-grow flex flex-col items-center justify-center text-center p-20">
-             <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-8">
-                <FileText className="w-10 h-10 text-slate-200" />
-             </div>
-             <h2 className="text-3xl font-black text-slate-300 tracking-tighter">Sélectionnez une leçon pour commencer</h2>
+          <div className="flex-grow flex flex-col items-center justify-center text-slate-100 p-20">
+            <div className="w-32 h-32 bg-slate-50 rounded-[3rem] flex items-center justify-center mb-10">
+              <FileText className="w-12 h-12" />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-[0.3em] text-slate-200">En attente de sélection</h2>
           </div>
         )}
       </div>

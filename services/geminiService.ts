@@ -34,12 +34,11 @@ export const courseSchema = {
   required: ["title", "subtitle", "modules"]
 };
 
-// Schéma pour le contenu d'une leçon unique
 export const lessonContentSchema = {
   type: Type.OBJECT,
   properties: {
-    textContent: { type: Type.STRING, description: "Un cours textuel complet et structuré de 300-500 mots" },
-    videoUrl: { type: Type.STRING, description: "Une URL YouTube réelle et pertinente trouvée via la recherche" },
+    textContent: { type: Type.STRING, description: "Un cours textuel structuré de 300-500 mots" },
+    videoUrl: { type: Type.STRING, description: "URL YouTube réelle" },
     quiz: {
       type: Type.ARRAY,
       items: {
@@ -51,50 +50,77 @@ export const lessonContentSchema = {
         },
         required: ["question", "options", "correctIndex"]
       }
+    },
+    resources: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          label: { type: Type.STRING },
+          url: { type: Type.STRING },
+          type: { type: Type.STRING, enum: ["article", "tool", "book", "pdf"] }
+        },
+        required: ["label", "url", "type"]
+      }
+    },
+    glossary: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          term: { type: Type.STRING },
+          definition: { type: Type.STRING }
+        },
+        required: ["term", "definition"]
+      }
     }
   },
-  required: ["textContent", "videoUrl", "quiz"]
+  required: ["textContent", "videoUrl", "quiz", "resources", "glossary"]
 };
 
 export const generateCourseWithSearch = async (prompt: string) => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: courseSchema,
-        systemInstruction: "Tu es le Chef de Studio. Crée une structure de cours basée sur des recherches web actuelles."
-      },
-    });
-    return {
-      course: JSON.parse(response.text || "{}"),
-      sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
-    };
-  } catch (error) {
-    console.error("Erreur structure:", error);
-    throw error;
-  }
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: prompt,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: courseSchema,
+      systemInstruction: "Tu es le Chef de Studio. Crée une structure de cours basée sur des recherches web actuelles."
+    },
+  });
+  return {
+    course: JSON.parse(response.text || "{}"),
+    sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+  };
 };
 
 export const generateDetailedLessonContent = async (lessonTitle: string, courseContext: string) => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `Génère le contenu complet pour la leçon intitulée "${lessonTitle}" dans le cadre d'une formation sur "${courseContext}". Trouve une vidéo YouTube éducative réelle, rédige le cours et crée un quiz.`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: lessonContentSchema,
-        systemInstruction: "Tu es un expert en pédagogie numérique. Ton but est de fournir du contenu prêt à l'emploi. Assure-toi que les URLs vidéos sont valides et que le texte est riche en informations."
-      }
-    });
-    return JSON.parse(response.text || "{}");
-  } catch (error) {
-    console.error("Erreur contenu leçon:", error);
-    throw error;
+  const response = await ai.models.generateContent({
+    model: "gemini-3-pro-preview",
+    contents: `Contenu complet pour "${lessonTitle}" (Formation: ${courseContext}). Trouve 1 vidéo réelle, 3 ressources web (liens), et un glossaire de 3 termes.`,
+    config: {
+      tools: [{ googleSearch: {} }],
+      responseMimeType: "application/json",
+      responseSchema: lessonContentSchema
+    }
+  });
+  return JSON.parse(response.text || "{}");
+};
+
+export const generateAIImage = async (prompt: string) => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: { parts: [{ text: `A high-end, clean, professional editorial illustration for a digital course about: ${prompt}. Soft luxury style, mindfulness aesthetic, 4k.` }] },
+    config: { imageConfig: { aspectRatio: "16:9" } }
+  });
+  
+  for (const part of response.candidates?.[0].content.parts || []) {
+    if (part.inlineData) {
+      return `data:image/png;base64,${part.inlineData.data}`;
+    }
   }
+  throw new Error("No image generated");
 };
 
 export const startConversation = async (systemInstruction: string) => {
@@ -105,10 +131,6 @@ export const startConversation = async (systemInstruction: string) => {
 };
 
 export const sendMessage = async (chat: any, message: string): Promise<string> => {
-  try {
-    const result: GenerateContentResponse = await chat.sendMessage({ message });
-    return result.text || "Erreur.";
-  } catch (error) {
-    return "Erreur Gemini.";
-  }
+  const result: GenerateContentResponse = await chat.sendMessage({ message });
+  return result.text || "Erreur.";
 };

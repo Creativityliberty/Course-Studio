@@ -7,13 +7,26 @@ export enum CourseStatus {
 export enum ContentBlockType {
   VIDEO = 'video',
   TEXT = 'text',
-  QUIZ = 'quiz'
+  QUIZ = 'quiz',
+  RESOURCE = 'resource',
+  IMAGE = 'image'
 }
 
 export interface QuizQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+}
+
+export interface ResourceLink {
+  label: string;
+  url: string;
+  type: 'article' | 'tool' | 'book' | 'pdf';
+}
+
+export interface GlossaryTerm {
+  term: string;
+  definition: string;
 }
 
 export interface ContentBlock {
@@ -23,7 +36,13 @@ export interface ContentBlock {
   content: string;
   payload?: {
     url?: string;
+    videoUrls?: string[];
+    primaryVideoIndex?: number;
     questions?: QuizQuestion[];
+    resources?: ResourceLink[];
+    glossary?: GlossaryTerm[];
+    imageUrl?: string;
+    imagePrompt?: string;
   };
 }
 
