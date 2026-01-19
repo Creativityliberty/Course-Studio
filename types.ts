@@ -43,6 +43,8 @@ export interface ContentBlock {
     glossary?: GlossaryTerm[];
     imageUrl?: string;
     imagePrompt?: string;
+    // Added audioUrl property to support base64 encoded raw PCM data from Gemini TTS
+    audioUrl?: string;
   };
 }
 

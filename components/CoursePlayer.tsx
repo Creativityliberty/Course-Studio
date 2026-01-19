@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { ChevronLeft, PlayCircle, FileText, CheckCircle2, ChevronRight, X, Trophy, HelpCircle, ExternalLink, Book, Image as ImageIcon, Info } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, PlayCircle, Pause, CheckCircle2, Volume2, Info, Book, ExternalLink } from 'lucide-react';
 import { Module, Lesson, ContentBlockType } from '../types';
 
 interface CoursePlayerProps {
@@ -8,60 +8,132 @@ interface CoursePlayerProps {
   onClose: () => void;
 }
 
+// Added decode helper function to convert base64 to Uint8Array as per Gemini API guidelines
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Added decodeAudioData to handle raw PCM audio bytes from Gemini TTS
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
 export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) => {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.modules[0]?.lessons[0] || null);
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [isPlayingAudio, setIsPlayingAudio] = useState<string | null>(null);
+  
+  // Audio references for raw PCM playback using AudioContext
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Fonction pour nettoyer le texte des astérisques de l'IA
-  const cleanText = (text: string) => {
-    return text.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+  const cleanText = (text: string) => text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '').trim();
+
+  // Updated handlePlayAudio to use AudioContext for raw PCM decoding as required by the Gemini API
+  const handlePlayAudio = async (base64: string, blockId: string) => {
+    if (isPlayingAudio === blockId) {
+      if (currentSourceRef.current) {
+        currentSourceRef.current.stop();
+        currentSourceRef.current = null;
+      }
+      setIsPlayingAudio(null);
+    } else {
+      // Stop current playback if any
+      if (currentSourceRef.current) {
+        currentSourceRef.current.stop();
+        currentSourceRef.current = null;
+      }
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      }
+      
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      try {
+        const audioBuffer = await decodeAudioData(decode(base64), ctx, 24000, 1);
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.onended = () => {
+          if (currentSourceRef.current === source) {
+            setIsPlayingAudio(null);
+          }
+        };
+        source.start();
+        currentSourceRef.current = source;
+        setIsPlayingAudio(blockId);
+      } catch (error) {
+        console.error("PCM Audio playback error:", error);
+        setIsPlayingAudio(null);
+      }
+    }
   };
 
-  const getEmbedUrl = (url: string) => {
-    if (!url) return null;
-    let videoId = '';
-    if (url.includes('youtube.com/watch?v=')) videoId = url.split('v=')[1]?.split('&')[0];
-    else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1]?.split('?')[0];
-    else if (url.includes('vimeo.com/')) videoId = url.split('vimeo.com/')[1];
-    return videoId ? (url.includes('vimeo') ? `https://player.vimeo.com/video/${videoId}` : `https://www.youtube.com/embed/${videoId}`) : null;
-  };
-
-  const toggleComplete = (id: string) => {
-    const next = new Set(completedLessons);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setCompletedLessons(next);
-  };
+  // Clean up audio resources on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentSourceRef.current) {
+        currentSourceRef.current.stop();
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white flex animate-in fade-in duration-500 font-sans text-slate-900">
-      {/* Sidebar Navigation inspired by screenshot 2 */}
-      <div className="w-80 h-full bg-white border-r border-slate-50 flex flex-col">
-        <div className="p-8 flex items-center justify-between">
-          <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all">
-            <ChevronLeft className="w-5 h-5 text-slate-300" />
+    <div className="fixed inset-0 z-[100] bg-surface flex animate-in fade-in duration-700 font-sans text-text-main">
+      {/* Sidebar Minimaliste */}
+      <div className="w-96 h-full bg-surface border-r border-text-muted/10 flex flex-col shadow-luxury">
+        <div className="p-12 flex items-center justify-between">
+          <button onClick={onClose} className="p-3 hover:bg-primary/5 rounded-full transition-all group">
+            <ChevronLeft className="w-6 h-6 text-text-muted group-hover:text-text-main" />
           </button>
           <div className="text-right">
-             <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Étudiant</p>
-             <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter truncate w-32">{course.title}</h4>
+             <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">Expérience</p>
+             <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-widest truncate w-40">{course.title}</h4>
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto px-4 py-8 space-y-10 no-scrollbar">
+        <div className="flex-grow overflow-y-auto px-6 py-4 space-y-12 no-scrollbar">
           {course.modules.map((mod, mIdx) => (
-            <div key={mod.id}>
-              <h5 className="px-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mb-4">Module {mIdx + 1}</h5>
-              <div className="space-y-1">
+            <div key={mod.id} className="space-y-4">
+              <h5 className="px-6 text-[10px] font-black text-text-muted uppercase tracking-[0.4em]">Module {mIdx + 1}</h5>
+              <div className="space-y-2">
                 {mod.lessons.map((less) => (
                   <button 
                     key={less.id} 
                     onClick={() => setActiveLesson(less)} 
-                    className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all text-left group ${activeLesson?.id === less.id ? 'bg-primary/5' : 'hover:bg-slate-50'}`}
+                    className={`w-full p-6 rounded-3xl flex items-center gap-6 transition-all text-left ${activeLesson?.id === less.id ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-primary/5 opacity-50'}`}
                   >
-                    <div className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${activeLesson?.id === less.id ? 'bg-white border-primary text-primary shadow-sm' : 'border-slate-100 text-slate-200 group-hover:border-primary group-hover:text-primary'}`}>
-                      <PlayCircle className="w-4 h-4" />
+                    <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${activeLesson?.id === less.id ? 'bg-surface border-primary text-primary shadow-lg' : 'border-text-muted/20 text-text-muted'}`}>
+                      <PlayCircle className="w-5 h-5" />
                     </div>
-                    <span className={`text-sm font-bold tracking-tight ${activeLesson?.id === less.id ? 'text-primary' : 'text-slate-500'}`}>{less.title}</span>
+                    <span className="text-base font-bold tracking-tight">{less.title}</span>
                   </button>
                 ))}
               </div>
@@ -70,90 +142,51 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) =
         </div>
       </div>
 
-      {/* Main Content View with Huge Typography */}
-      <div className="flex-grow h-full overflow-y-auto bg-white flex flex-col scroll-smooth no-scrollbar border-l border-slate-50">
+      {/* Rendu Editorial Ultra-High-End */}
+      <div className="flex-grow h-full overflow-y-auto bg-surface flex flex-col scroll-smooth no-scrollbar">
         {activeLesson ? (
-          <div className="max-w-4xl mx-auto w-full px-12 py-20">
-            <header className="mb-20">
-               <span className="px-6 py-2.5 bg-indigo-50 text-primary rounded-xl text-[10px] font-black uppercase tracking-[0.2em] mb-8 inline-block">Unité d'apprentissage</span>
-               <h1 className="text-[5.5rem] font-black text-slate-900 tracking-tighter mb-4 leading-[0.9]">{activeLesson.title}</h1>
+          <div className="max-w-5xl mx-auto w-full px-20 py-32">
+            <header className="mb-32">
+               <span className="px-8 py-3 bg-primary text-surface rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] mb-12 inline-block shadow-xl">Formation Signature</span>
+               <h1 className="editorial-title text-[8rem] text-text-main leading-[0.85] tracking-tighter">{activeLesson.title}</h1>
             </header>
 
-            <div className="space-y-24">
+            <div className="space-y-40">
               {activeLesson.blocks.map((block) => (
-                <div key={block.id} className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                <div key={block.id} className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
                   
-                  {/* Block Title Cleanup */}
-                  {block.type !== ContentBlockType.IMAGE && (
-                    <h2 className="text-5xl font-black text-slate-900 mb-10 tracking-tight leading-tight">{cleanText(block.title)}</h2>
-                  )}
+                  <div className="flex items-center justify-between mb-12">
+                    <h2 className="text-6xl font-black text-text-main tracking-tighter leading-tight">{cleanText(block.title)}</h2>
+                    {/* Fixed audioUrl access using the updated ContentBlock type */}
+                    {block.payload?.audioUrl && (
+                      <button 
+                        onClick={() => handlePlayAudio(block.payload!.audioUrl!, block.id)}
+                        className="p-8 bg-text-main text-surface rounded-[2.5rem] flex items-center gap-4 hover:scale-105 transition-all shadow-luxury"
+                      >
+                        {isPlayingAudio === block.id ? <Pause className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
+                        <span className="text-xs font-black uppercase tracking-widest">Écouter le Guide IA</span>
+                      </button>
+                    )}
+                  </div>
 
-                  {/* Image Block */}
-                  {block.type === ContentBlockType.IMAGE && block.payload?.imageUrl && (
-                    <div className="rounded-[3.5rem] overflow-hidden shadow-luxury">
-                      <img src={block.payload.imageUrl} className="w-full h-auto" alt={block.payload.imagePrompt} />
-                    </div>
-                  )}
-
-                  {/* Video Block */}
-                  {block.type === ContentBlockType.VIDEO && (block.payload?.videoUrls?.[0] || block.payload?.url) && (
-                    <div className="aspect-video bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-luxury">
-                       <iframe src={getEmbedUrl(block.payload?.videoUrls?.[0] || block.payload?.url!)!} className="w-full h-full border-0" allowFullScreen />
-                    </div>
-                  )}
-
-                  {/* Text Block Clean Rendering */}
                   {block.type === ContentBlockType.TEXT && (
-                    <div className="space-y-12">
-                       <div className="text-2xl font-medium text-slate-500 leading-[1.6] whitespace-pre-wrap tracking-tight">
-                          {cleanText(block.content)}
-                       </div>
-                       {block.payload?.glossary && (
-                         <div className="bg-slate-50 p-12 rounded-[3rem] border border-slate-100">
-                           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-8">Glossaire de la leçon</h4>
-                           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                              {block.payload.glossary.map((g, i) => (
-                                <div key={i}>
-                                  <p className="font-black text-primary text-xs uppercase mb-3 tracking-widest">{g.term}</p>
-                                  <p className="text-xs text-slate-400 leading-relaxed font-medium">{g.definition}</p>
-                                </div>
-                              ))}
-                           </div>
-                         </div>
-                       )}
+                    <div className="text-3xl font-medium text-text-muted leading-[1.6] tracking-tight whitespace-pre-wrap">
+                      {cleanText(block.content)}
                     </div>
                   )}
 
-                  {/* Resource Block */}
-                  {block.type === ContentBlockType.RESOURCE && block.payload?.resources && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {block.payload.resources.map((res, i) => (
-                        <a key={i} href={res.url} target="_blank" className="p-8 bg-white border border-slate-100 rounded-[2.5rem] flex items-center justify-between hover:border-primary/20 transition-all shadow-sm group">
-                            <div className="flex items-center gap-5">
-                              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white transition-all"><ExternalLink className="w-5 h-5" /></div>
-                              <span className="font-black text-slate-900 tracking-tight">{res.label}</span>
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-200">{res.type}</span>
-                        </a>
-                      ))}
+                  {block.type === ContentBlockType.IMAGE && block.payload?.imageUrl && (
+                    <div className="rounded-[4rem] overflow-hidden shadow-luxury ring-1 ring-text-muted/10">
+                      <img src={block.payload.imageUrl} className="w-full h-auto" />
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            
-            <div className="mt-40 py-12 border-t border-slate-100 flex justify-center">
-               <button onClick={() => toggleComplete(activeLesson.id)} className={`px-16 py-8 rounded-full font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 ${completedLessons.has(activeLesson.id) ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-slate-900 text-white hover:bg-primary shadow-slate-200'}`}>
-                  {completedLessons.has(activeLesson.id) ? '✓ Leçon Terminée' : 'Finaliser la leçon'}
-               </button>
-            </div>
           </div>
         ) : (
-          <div className="flex-grow flex flex-col items-center justify-center text-slate-100 p-20">
-            <div className="w-32 h-32 bg-slate-50 rounded-[3rem] flex items-center justify-center mb-10">
-              <FileText className="w-12 h-12" />
-            </div>
-            <h2 className="text-2xl font-black uppercase tracking-[0.3em] text-slate-200">En attente de sélection</h2>
+          <div className="flex-grow flex items-center justify-center">
+            <h2 className="editorial-title text-8xl opacity-5 text-text-main">SÉLECTIONNEZ UNE UNITÉ</h2>
           </div>
         )}
       </div>
