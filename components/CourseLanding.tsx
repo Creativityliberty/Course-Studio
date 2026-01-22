@@ -83,10 +83,10 @@ export const CourseLanding: React.FC = () => {
               <span className="px-4 md:px-6 py-2 border border-text-main/10 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.5em] mb-6 md:mb-8 inline-block">
                 Masterclass Automne 2025
               </span>
-              <h1 className="editorial-title text-5xl md:text-8xl lg:text-[12rem] leading-[0.9] tracking-tighter mb-6 md:mb-8 bg-clip-text text-transparent bg-gradient-to-b from-text-main to-text-main/60">
+              <h1 className="editorial-title text-4xl md:text-7xl lg:text-9xl leading-tight tracking-tighter mb-6 md:mb-8 bg-clip-text text-transparent bg-gradient-to-b from-text-main to-text-main/60">
                 {course.title}
               </h1>
-              <p className="text-lg md:text-2xl lg:text-3xl text-text-muted max-w-3xl mx-auto font-medium leading-relaxed italic opacity-80 px-4">
+              <p className="text-lg md:text-2xl text-text-muted max-w-3xl mx-auto font-medium leading-relaxed italic opacity-80 px-4">
                 "{course.subtitle || "Une immersion sensorielle au cœur de votre propre excellence."}"
               </p>
            </div>
@@ -115,7 +115,7 @@ export const CourseLanding: React.FC = () => {
          <div className="container-main relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
                <div className="space-y-8 md:space-y-12">
-                  <h2 className="editorial-title text-6xl md:text-[9rem] leading-[0.9]">L'Éveil par le Design.</h2>
+                  <h2 className="editorial-title text-5xl md:text-7xl lg:text-8xl leading-tight">L'Éveil par le Design.</h2>
                   <p className="text-xl md:text-3xl leading-snug font-light opacity-80">
                     Nous croyons que l'apprentissage est une forme d'art. Cette formation n'est pas qu'un transfert de données, c'est une <strong>métamorphose visuelle et mentale</strong>.
                   </p>
@@ -146,7 +146,7 @@ export const CourseLanding: React.FC = () => {
          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 md:mb-32 gap-8 md:gap-12">
             <div className="max-w-2xl space-y-6">
                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Le Sommaire</span>
-               <h2 className="editorial-title text-6xl md:text-[10rem] leading-none">Architecture.</h2>
+               <h2 className="editorial-title text-5xl md:text-7xl lg:text-9xl leading-none">Architecture.</h2>
             </div>
             <p className="text-lg md:text-xl text-text-muted font-medium max-w-sm">
               Une progression logique découpée en {course.modules.length} chapitres fondamentaux.
@@ -189,7 +189,7 @@ export const CourseLanding: React.FC = () => {
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-primary/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6 md:mb-10 shadow-xl shadow-primary/10">
                      <ShieldCheck className="w-8 md:w-10 h-8 md:h-10" />
                   </div>
-                  <h2 className="editorial-title text-5xl md:text-8xl tracking-tighter">Accès Immédiat.</h2>
+                  <h2 className="editorial-title text-4xl md:text-7xl lg:text-8xl tracking-tighter">Accès Immédiat.</h2>
                   <p className="text-lg md:text-xl text-text-muted font-medium max-w-xl mx-auto leading-relaxed">
                     L'inscription est immédiate. Pas de carte bancaire, juste votre curiosité.
                   </p>

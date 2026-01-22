@@ -35,17 +35,17 @@ export const HomePage: React.FC = () => {
             L'Art de Transmettre par l'IA
           </div>
           
-          <h1 className={`editorial-title text-6xl md:text-9xl lg:text-[13rem] font-black text-slate-900 leading-[0.85] tracking-tighter mb-12 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
+          <h1 className={`editorial-title text-5xl md:text-7xl lg:text-9xl font-black text-slate-900 leading-tight tracking-tighter mb-12 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}>
             Excellence <br />
             <span className="text-primary italic">Pédagogique.</span>
           </h1>
           
-          <p className={`text-xl md:text-3xl text-slate-500 font-medium max-w-3xl mx-auto leading-tight italic opacity-60 mb-16 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <p className={`text-lg md:text-2xl text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed italic opacity-60 mb-16 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             Sublimez votre savoir. Notre Studio fusionne design haute couture et intelligence artificielle pour créer des cours qui respirent.
           </p>
           
           <div className={`flex flex-col sm:flex-row items-center justify-center gap-8 transition-all duration-1000 delay-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <Link to="/builder" className="group bg-slate-900 text-white px-14 py-7 rounded-[2.5rem] text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary transition-all hover:scale-105 active:scale-95 shadow-luxury flex items-center gap-4">
+            <Link to="/builder" className="group bg-slate-900 text-white px-10 py-6 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary transition-all hover:scale-105 active:scale-95 shadow-luxury flex items-center gap-4">
               Ouvrir le Studio
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -83,7 +83,7 @@ export const HomePage: React.FC = () => {
       <section className="py-40 container-main px-6">
         <div className="text-center mb-32 space-y-6">
           <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">L'Atelier des Sens</span>
-          <h2 className="editorial-title text-6xl md:text-9xl text-slate-900">Une Aura Digitale.</h2>
+          <h2 className="editorial-title text-5xl md:text-7xl text-slate-900">Une Aura Digitale.</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-16">
@@ -131,7 +131,7 @@ export const HomePage: React.FC = () => {
         <div className="container-main relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
           <div className="space-y-12">
             <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Le Manifeste</span>
-            <h2 className="editorial-title text-6xl md:text-[10rem] leading-[0.85] tracking-tighter">
+            <h2 className="editorial-title text-5xl md:text-8xl leading-tight tracking-tighter">
               Le Savoir <br />
               est un <br />
               <span className="text-primary italic">Bijou.</span>
@@ -164,7 +164,7 @@ export const HomePage: React.FC = () => {
       {/* SECTION 5: CALL TO ACTION FINAL */}
       <section className="py-60 container-main text-center px-6">
         <div className="max-w-5xl mx-auto space-y-20">
-          <h2 className="editorial-title text-7xl md:text-[12rem] leading-none text-slate-900 animate-pulse">
+          <h2 className="editorial-title text-6xl md:text-8xl leading-none text-slate-900 animate-pulse">
             Incarnez votre <br />
             <span className="text-primary italic">Vision.</span>
           </h2>
