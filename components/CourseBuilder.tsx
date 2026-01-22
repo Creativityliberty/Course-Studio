@@ -21,11 +21,14 @@ export const CourseBuilder: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
   
-  const [courseMeta, setCourseMeta] = useState({ 
+  const [courseMeta, setCourseMeta] = useState<any>({ 
     id: `c-${Date.now()}`,
     title: 'Maîtrise de l\'IA', 
     subtitle: 'Devenez un expert en pilotage de LLMs, de la rédaction de prompts au déploiement agentique.',
-    coverImage: `https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200`
+    coverImage: `https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200`,
+    testimonials: [],
+    faq: [],
+    glossary: []
   });
   
   const [modules, setModules] = useState<Module[]>([
@@ -55,11 +58,8 @@ export const CourseBuilder: React.FC = () => {
     setIsPublishing(true);
     
     setTimeout(() => {
-      const newCourse: Course = {
-        id: courseMeta.id,
-        title: courseMeta.title,
-        subtitle: courseMeta.subtitle,
-        coverImage: courseMeta.coverImage,
+      const newCourse: any = {
+        ...courseMeta,
         status: CourseStatus.PUBLISHED,
         modules: modules
       };
@@ -80,7 +80,10 @@ export const CourseBuilder: React.FC = () => {
       ...courseMeta, 
       title: aiData.title || courseMeta.title, 
       subtitle: aiData.subtitle || courseMeta.subtitle,
-      coverImage: aiData.coverImage || courseMeta.coverImage
+      coverImage: aiData.coverImage || courseMeta.coverImage,
+      testimonials: aiData.testimonials || [],
+      faq: aiData.faq || [],
+      glossary: aiData.glossary || []
     });
     if (aiData.modules) setModules(aiData.modules);
     setShowAgent(false);

@@ -2,18 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
-  Sparkles, BookOpen, Clock, Award, Loader2, X
+  Sparkles, BookOpen, Clock, Award, Loader2, X, Star, Quote, ChevronDown, HelpCircle, Book
 } from 'lucide-react';
 import { CoursePlayer } from './CoursePlayer';
 import { Course } from '../types';
 
 export const CourseLanding: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
-  const [course, setCourse] = useState<Course | null>(null);
+  const [course, setCourse] = useState<any | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [email, setEmail] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 100);
@@ -56,7 +57,7 @@ export const CourseLanding: React.FC = () => {
     return <CoursePlayer course={course} onClose={() => setIsRegistered(false)} />;
   }
 
-  const totalLessons = course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
+  const totalLessons = course.modules?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0;
 
   return (
     <div className="min-h-screen bg-surface text-text-main selection:bg-primary/20 font-sans overflow-x-hidden">
@@ -117,7 +118,34 @@ export const CourseLanding: React.FC = () => {
         </div>
       </section>
 
-      <section id="curriculum" className="py-40 bg-white border-y border-slate-50 px-6">
+      {/* SECTION TÉMOIGNAGES */}
+      {course.testimonials && course.testimonials.length > 0 && (
+        <section className="py-40 bg-slate-50/50 border-y border-slate-100 px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-24 space-y-6">
+              <span className="text-[11px] font-black uppercase tracking-[0.5em] text-primary">Preuve Sociale</span>
+              <h2 className="editorial-title text-6xl md:text-8xl">Recommandations.</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              {course.testimonials.map((t: any, i: number) => (
+                <div key={i} className="bg-white p-12 rounded-[4rem] shadow-premium border border-slate-50 relative group transition-all hover:-translate-y-2">
+                  <Quote className="absolute top-10 right-10 w-12 h-12 text-primary opacity-5" />
+                  <div className="flex items-center gap-6 mb-10">
+                    <img src={t.avatar} className="w-16 h-16 rounded-2xl object-cover shadow-lg" alt={t.name} />
+                    <div>
+                      <h4 className="font-black text-slate-900 leading-none mb-1">{t.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.role}</p>
+                    </div>
+                  </div>
+                  <p className="text-xl text-slate-500 font-medium italic leading-relaxed">"{t.content}"</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="curriculum" className="py-40 bg-white px-6">
          <div className="max-w-6xl mx-auto">
             <div className="text-center mb-32 space-y-8">
                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-primary">Architecture du savoir</span>
@@ -125,14 +153,14 @@ export const CourseLanding: React.FC = () => {
             </div>
 
             <div className="space-y-8">
-               {course.modules?.map((mod, idx) => (
+               {course.modules?.map((mod: any, idx: number) => (
                   <div key={idx} className="group bg-slate-50/50 border border-slate-100 rounded-[3.5rem] p-12 hover:bg-white transition-all shadow-sm">
                      <div className="flex flex-col lg:flex-row gap-12 lg:items-center">
                         <div className="text-5xl font-black text-primary/30 italic">0{idx + 1}</div>
                         <div className="flex-grow space-y-8">
                            <h3 className="text-4xl font-black tracking-tighter">{mod.title}</h3>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {mod.lessons?.map((lesson, lIdx) => (
+                              {mod.lessons?.map((lesson: any, lIdx: number) => (
                                  <div key={lIdx} className="flex items-center gap-4 text-slate-500 text-lg font-medium italic">
                                     <div className="w-2 h-2 rounded-full bg-primary/30"></div>
                                     {lesson.title}
@@ -145,6 +173,56 @@ export const CourseLanding: React.FC = () => {
                ))}
             </div>
          </div>
+      </section>
+
+      {/* SECTION GLOSSAIRE & FAQ */}
+      <section className="py-40 bg-slate-900 text-white px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24">
+          
+          {/* FAQ */}
+          <div className="space-y-16">
+            <div className="space-y-6">
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Assistance</span>
+              <h2 className="editorial-title text-5xl md:text-7xl">Questions.</h2>
+            </div>
+            <div className="space-y-4">
+              {course.faq?.map((item: any, i: number) => (
+                <div key={i} className="border-b border-white/10 pb-6">
+                  <button 
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    className="w-full flex items-center justify-between text-left group py-4"
+                  >
+                    <span className="text-xl font-bold tracking-tight group-hover:text-primary transition-colors">{item.question}</span>
+                    <ChevronDown className={`w-6 h-6 transition-transform ${openFaq === i ? 'rotate-180 text-primary' : 'text-white/20'}`} />
+                  </button>
+                  {openFaq === i && (
+                    <p className="text-lg text-white/50 font-medium italic mt-4 animate-in fade-in duration-500">{item.answer}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* GLOSSAIRE */}
+          <div className="space-y-16">
+            <div className="space-y-6">
+              <span className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Lexique</span>
+              <h2 className="editorial-title text-5xl md:text-7xl">Concepts.</h2>
+            </div>
+            <div className="grid gap-8">
+              {course.glossary?.map((g: any, i: number) => (
+                <div key={i} className="bg-white/5 p-10 rounded-[3rem] border border-white/5 hover:bg-white/10 transition-all">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Book className="w-5 h-5 text-primary" />
+                    <h4 className="text-2xl font-black tracking-tight">{g.term}</h4>
+                  </div>
+                  <p className="text-lg text-white/40 font-medium italic leading-relaxed">{g.definition}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
       </section>
 
       <section id="registration" className="py-60 container-main px-6">
