@@ -1,6 +1,8 @@
 
-import React, { useState } from 'react';
-import { Plus, GripVertical, Play, Type, HelpCircle, Save, CheckCircle, Sparkles, Wand2, Layers, MoreVertical, Pencil, Eye, Share2, Copy, X, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+// Added Link to imports from react-router-dom
+import { Link } from 'react-router-dom';
+import { Plus, GripVertical, Play, Type, HelpCircle, Save, CheckCircle, Sparkles, Wand2, Layers, MoreVertical, Pencil, Eye, Share2, Copy, X, Check, Loader2 } from 'lucide-react';
 import { ContentBlockType, Module, Lesson, Course, CourseStatus } from '../types';
 import { AIStudioAgent } from './AIStudioAgent';
 import { LessonEditor } from './LessonEditor';
@@ -18,8 +20,8 @@ export const CourseBuilder: React.FC = () => {
   const [courseMeta, setCourseMeta] = useState({ 
     id: `c-${Date.now()}`,
     title: 'Nouvelle Formation', 
-    subtitle: '',
-    coverImage: `https://picsum.photos/seed/${Math.random()}/1200/800?grayscale`
+    subtitle: 'Description de votre masterclass...',
+    coverImage: `https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80&w=1200`
   });
   
   const [modules, setModules] = useState<Module[]>([
@@ -33,10 +35,15 @@ export const CourseBuilder: React.FC = () => {
     }
   ]);
 
+  // Sauvegarde automatique en brouillon
+  useEffect(() => {
+    const draft = { meta: courseMeta, modules };
+    localStorage.setItem('studio_draft', JSON.stringify(draft));
+  }, [courseMeta, modules]);
+
   const handlePublish = () => {
     setIsPublishing(true);
     
-    // Création de l'objet cours complet
     const newCourse: Course = {
       id: courseMeta.id,
       title: courseMeta.title,
@@ -46,19 +53,19 @@ export const CourseBuilder: React.FC = () => {
       modules: modules
     };
 
-    // Simulation de sauvegarde en "DB" (LocalStorage)
+    // Persistance dans la "base de données" simulée
     const existing = JSON.parse(localStorage.getItem('published_courses') || '[]');
     const updated = [newCourse, ...existing.filter((c: any) => c.id !== newCourse.id)];
     localStorage.setItem('published_courses', JSON.stringify(updated));
 
-    // Génération du lien de partage
+    // Construction de l'URL réelle pour le partage
     const url = `${window.location.origin}${window.location.pathname}#/share/${newCourse.id}`;
     setPublishedUrl(url);
 
     setTimeout(() => {
       setIsPublishing(false);
       setShowShareModal(true);
-    }, 1500);
+    }, 2000);
   };
 
   const copyToClipboard = () => {
@@ -98,7 +105,7 @@ export const CourseBuilder: React.FC = () => {
   const addLesson = (moduleId: string) => {
     setModules(prev => prev.map(m => {
       if (m.id === moduleId) {
-        return { ...m, lessons: [...m.lessons, { id: `l${Date.now()}`, title: 'Nouvelle Leçon', blocks: [] }] };
+        return { ...m, lessons: [...m.lessons, { id: `l${Date.now()}`, title: 'Nouvelle Unité', blocks: [] }] };
       }
       return m;
     }));
@@ -106,8 +113,8 @@ export const CourseBuilder: React.FC = () => {
 
   if (showAgent) {
     return (
-      <div className="container-main py-12 animate-in fade-in duration-500">
-        <button onClick={() => setShowAgent(false)} className="mb-8 text-sm font-black text-slate-400 hover:text-primary transition-colors flex items-center gap-2 group">
+      <div className="container-main py-20 animate-in fade-in duration-500">
+        <button onClick={() => setShowAgent(false)} className="mb-12 text-[10px] font-black text-slate-400 hover:text-primary transition-colors flex items-center gap-3 group uppercase tracking-[0.3em]">
           <span className="group-hover:-translate-x-1 transition-transform">←</span> Retour au Builder manuel
         </button>
         <AIStudioAgent onCourseGenerated={handleAICourseImport} />
@@ -116,75 +123,76 @@ export const CourseBuilder: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 relative">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-16">
-        <div className="flex-grow max-w-2xl">
-          <div className="flex items-center gap-4 mb-3">
-             <div className="p-3 bg-primary/10 text-primary rounded-2xl"><Pencil className="w-5 h-5" /></div>
-             <input className="text-4xl font-black tracking-tighter text-slate-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full" value={courseMeta.title} onChange={(e) => setCourseMeta({...courseMeta, title: e.target.value})} placeholder="Titre de la formation" />
+    <div className="max-w-7xl mx-auto px-6 py-20 relative">
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-12 mb-32">
+        <div className="flex-grow max-w-3xl space-y-6">
+          <div className="flex items-center gap-6">
+             <div className="w-20 h-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center flex-shrink-0 shadow-xl shadow-primary/10">
+                <Pencil className="w-8 h-8" />
+             </div>
+             <div className="flex-grow">
+                <input 
+                  className="editorial-title text-6xl md:text-8xl text-slate-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full tracking-tighter" 
+                  value={courseMeta.title} 
+                  onChange={(e) => setCourseMeta({...courseMeta, title: e.target.value})} 
+                  placeholder="Titre de la formation" 
+                />
+             </div>
           </div>
-          <textarea className="text-slate-500 font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full resize-none leading-relaxed" value={courseMeta.subtitle} onChange={(e) => setCourseMeta({...courseMeta, subtitle: e.target.value})} placeholder="Ajoutez une description courte pour vos élèves..." rows={2} />
+          <textarea 
+            className="text-2xl text-slate-400 font-medium bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full resize-none leading-relaxed italic" 
+            value={courseMeta.subtitle} 
+            onChange={(e) => setCourseMeta({...courseMeta, subtitle: e.target.value})} 
+            placeholder="Écrivez le sous-titre de votre masterclass..." 
+            rows={2} 
+          />
         </div>
+        
         <div className="flex gap-4">
-          <button onClick={() => setIsPreviewMode(true)} className="flex items-center gap-2 px-7 py-4 bg-white border border-slate-100 rounded-[1.5rem] text-sm font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm">
-            <Eye className="w-4 h-4" /> Aperçu
+          <button onClick={() => setIsPreviewMode(true)} className="group flex items-center gap-3 px-10 py-6 bg-white border border-slate-100 rounded-[2rem] text-[10px] font-black text-slate-500 hover:bg-slate-50 transition-all shadow-sm">
+            <Eye className="w-5 h-5 opacity-40 group-hover:opacity-100 transition-opacity" /> Aperçu Studio
           </button>
           <button 
             onClick={handlePublish}
             disabled={isPublishing}
-            className="flex items-center gap-2 px-7 py-4 bg-primary text-white rounded-[1.5rem] text-sm font-black hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 uppercase tracking-widest"
+            className="flex items-center gap-3 px-10 py-6 bg-primary text-white rounded-[2rem] text-[10px] font-black hover:bg-primary-dark transition-all shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 uppercase tracking-[0.3em]"
           >
-            {isPublishing ? 'Publication...' : <><CheckCircle className="w-4 h-4" /> Publier</>}
+            {isPublishing ? <><Loader2 className="w-5 h-5 animate-spin" /> Publication...</> : <><CheckCircle className="w-5 h-5" /> Publier</>}
           </button>
         </div>
       </header>
 
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-xl animate-in fade-in duration-300">
-           <div className="max-w-md w-full bg-white rounded-[3.5rem] p-12 shadow-2xl relative animate-in zoom-in-95 duration-500">
-              <button onClick={() => setShowShareModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-900 transition-colors"><X className="w-6 h-6" /></button>
-              <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mb-8 mx-auto">
-                 <Share2 className="w-10 h-10" />
-              </div>
-              <h3 className="text-3xl font-black text-center mb-4 tracking-tight">C'est en ligne !</h3>
-              <p className="text-slate-500 text-center font-medium mb-10 leading-relaxed">Votre formation est maintenant accessible. Partagez ce lien avec vos futurs élèves.</p>
-              
-              <div className="p-2 bg-slate-50 rounded-2xl flex items-center gap-2 border border-slate-100 mb-8">
-                 <input readOnly value={publishedUrl} className="flex-grow bg-transparent border-none focus:outline-none px-4 text-xs font-bold text-slate-500 truncate" />
-                 <button onClick={copyToClipboard} className="p-4 bg-white rounded-xl text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
-                   {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
-                 </button>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                 <a href={publishedUrl} target="_blank" className="w-full py-5 bg-slate-900 text-white text-center rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">Voir la Landing Page</a>
-              </div>
-           </div>
-        </div>
-      )}
-
       {/* Modules Builder Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-8 flex flex-col gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
+        <div className="lg:col-span-8 flex flex-col gap-12">
           {modules.map((module) => (
-            <div key={module.id} className="bg-white rounded-[3.5rem] p-12 shadow-premium border border-slate-50 group transition-all hover:shadow-luxury relative overflow-hidden">
-              <div className="flex items-center justify-between mb-12">
-                <div className="flex items-center gap-4 flex-grow">
-                  <div className="cursor-grab text-slate-200 hover:text-primary transition-colors p-2"><GripVertical className="w-6 h-6" /></div>
-                  <input className="text-3xl font-black bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full text-slate-900 tracking-tight" defaultValue={module.title} />
+            <div key={module.id} className="bg-white rounded-[4rem] p-16 shadow-premium border border-slate-50 group transition-all hover:shadow-luxury relative overflow-hidden">
+              <div className="flex items-center justify-between mb-16">
+                <div className="flex items-center gap-6 flex-grow">
+                  <div className="cursor-grab text-slate-200 hover:text-primary transition-colors p-2"><GripVertical className="w-8 h-8" /></div>
+                  <input className="text-4xl font-black bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-full text-slate-900 tracking-tighter" defaultValue={module.title} />
                 </div>
-                <button onClick={() => addLesson(module.id)} className="w-12 h-12 flex items-center justify-center bg-primary/5 text-primary hover:bg-primary hover:text-white rounded-[1.2rem] transition-all shadow-sm"><Plus className="w-6 h-6" /></button>
+                <button onClick={() => addLesson(module.id)} className="w-16 h-16 flex items-center justify-center bg-primary/5 text-primary hover:bg-primary hover:text-white rounded-3xl transition-all shadow-sm group-hover:scale-110"><Plus className="w-8 h-8" /></button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {module.lessons.map((lesson) => (
-                  <div key={lesson.id} className="group/lesson bg-slate-50/40 border border-slate-100 p-8 rounded-[2.5rem] flex items-center justify-between hover:border-primary/30 hover:bg-white transition-all shadow-sm cursor-pointer" onClick={() => setEditingLesson(lesson)}>
-                    <div className="flex items-center gap-6">
-                      <div className="w-14 h-14 flex items-center justify-center bg-white text-slate-300 rounded-3xl shadow-sm group-hover/lesson:bg-primary/10 group-hover/lesson:text-primary transition-all"><Play className="w-6 h-6" /></div>
+                  <div 
+                    key={lesson.id} 
+                    className="group/lesson bg-slate-50/40 border border-slate-100 p-10 rounded-[3rem] flex items-center justify-between hover:border-primary/30 hover:bg-white transition-all shadow-sm cursor-pointer" 
+                    onClick={() => setEditingLesson(lesson)}
+                  >
+                    <div className="flex items-center gap-8">
+                      <div className="w-16 h-16 flex items-center justify-center bg-white text-slate-300 rounded-[1.5rem] shadow-sm group-hover/lesson:bg-primary/10 group-hover/lesson:text-primary transition-all duration-500">
+                        <Play className="w-6 h-6 fill-current" />
+                      </div>
                       <div>
-                        <h5 className="text-lg font-black text-slate-800 group-hover/lesson:text-slate-900 transition-colors tracking-tight">{lesson.title}</h5>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 block">LEÇON VIDÉO + {lesson.blocks.length} BLOCS</span>
+                        <h5 className="text-2xl font-black text-slate-800 group-hover/lesson:text-slate-900 transition-colors tracking-tight">{lesson.title}</h5>
+                        <div className="flex items-center gap-4 mt-2">
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Masterclass Unité</span>
+                           <div className="w-1 h-1 rounded-full bg-slate-200"></div>
+                           <span className="text-[10px] font-black text-primary uppercase tracking-widest">{lesson.blocks.length} Blocs de contenu</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -193,23 +201,62 @@ export const CourseBuilder: React.FC = () => {
             </div>
           ))}
 
-          <button onClick={addModule} className="w-full py-16 border-2 border-dashed border-slate-200 rounded-[3.5rem] text-slate-400 font-bold hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-4">
-            <Plus className="w-8 h-8" />
-            <span className="uppercase tracking-[0.3em] text-[10px] font-black">Ajouter un module</span>
+          <button onClick={addModule} className="w-full py-24 border-2 border-dashed border-slate-100 rounded-[4rem] text-slate-300 font-bold hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-6 group">
+            <div className="w-20 h-20 rounded-full border border-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus className="w-10 h-10" /></div>
+            <span className="uppercase tracking-[0.5em] text-[10px] font-black">Ajouter un nouveau chapitre</span>
           </button>
         </div>
 
         <div className="lg:col-span-4">
-          <div className="sticky top-28 flex flex-col gap-10">
-            <div className="bg-white p-12 rounded-[3.5rem] shadow-premium border border-slate-50 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform"><Sparkles className="w-28 h-28 text-primary" /></div>
-               <h3 className="text-2xl font-black mb-3 text-primary tracking-tight">Agent Studio Chef</h3>
-               <p className="text-base text-slate-500 font-medium mb-10 leading-relaxed">L'IA automatise la recherche web, la rédaction et la création de quiz pour chaque leçon.</p>
-               <button onClick={() => setShowAgent(true)} className="w-full py-5 bg-primary text-white rounded-[1.8rem] text-xs font-black uppercase tracking-widest shadow-2xl shadow-primary/20 hover:bg-primary-dark transition-all">Planifier avec l'IA</button>
+          <div className="sticky top-32 flex flex-col gap-12">
+            <div className="bg-slate-900 text-white p-16 rounded-[4rem] shadow-2xl relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-1000"><Sparkles className="w-40 h-40" /></div>
+               <div className="relative z-10 space-y-8">
+                 <h3 className="text-4xl font-black leading-none tracking-tighter">Chef de Studio IA</h3>
+                 <p className="text-xl text-slate-400 font-medium leading-relaxed italic">"Laissez l'intelligence artificielle concevoir l'architecture de votre savoir."</p>
+                 <button onClick={() => setShowAgent(true)} className="w-full py-6 bg-primary text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-primary-dark transition-all hover:scale-105">Lancer la génération</button>
+               </div>
+            </div>
+            
+            <div className="p-12 border border-slate-100 rounded-[3rem] bg-white space-y-6">
+               <h4 className="text-xs font-black uppercase tracking-widest text-slate-300">Statistiques du projet</h4>
+               <div className="flex justify-between items-center py-4 border-b border-slate-50">
+                  <span className="text-sm font-bold text-slate-500">Modules</span>
+                  <span className="text-lg font-black">{modules.length}</span>
+               </div>
+               <div className="flex justify-between items-center py-4">
+                  <span className="text-sm font-bold text-slate-500">Leçons</span>
+                  <span className="text-lg font-black">{modules.reduce((a,b) => a + b.lessons.length, 0)}</span>
+               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-3xl animate-in fade-in duration-500">
+           <div className="max-w-xl w-full bg-white rounded-[5rem] p-20 shadow-2xl relative animate-in zoom-in-95 duration-700 text-center">
+              <button onClick={() => setShowShareModal(false)} className="absolute top-12 right-12 text-slate-200 hover:text-slate-900 transition-colors"><X className="w-10 h-10" /></button>
+              <div className="w-28 h-28 bg-emerald-50 text-emerald-500 rounded-[2.5rem] flex items-center justify-center mb-12 mx-auto shadow-xl shadow-emerald-500/5">
+                 <Share2 className="w-12 h-12" />
+              </div>
+              <h3 className="editorial-title text-7xl text-slate-900 mb-6 leading-none">C'est public.</h3>
+              <p className="text-xl text-slate-400 font-medium mb-16 leading-relaxed italic">Votre formation est maintenant prête à accueillir ses premiers élèves dans un écrin de luxe.</p>
+              
+              <div className="p-4 bg-slate-50 rounded-[2.5rem] flex items-center gap-4 border border-slate-100 mb-12 group">
+                 <input readOnly value={publishedUrl} className="flex-grow bg-transparent border-none focus:outline-none px-6 text-xs font-bold text-slate-400 truncate" />
+                 <button onClick={copyToClipboard} className="p-6 bg-white rounded-3xl text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
+                   {copied ? <Check className="w-6 h-6 text-emerald-500" /> : <Copy className="w-6 h-6" />}
+                 </button>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                 <Link to={`/share/${courseMeta.id}`} className="w-full py-8 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary transition-all shadow-2xl shadow-slate-200">Voir la Landing Page</Link>
+              </div>
+           </div>
+        </div>
+      )}
 
       {editingLesson && (
         <LessonEditor lesson={editingLesson} courseTitle={courseMeta.title} onSave={handleSaveLesson} onClose={() => setEditingLesson(null)} />
