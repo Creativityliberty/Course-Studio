@@ -3,10 +3,6 @@ import { GoogleGenAI, GenerateContentResponse, Type, Modality } from "@google/ge
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Schemas existants...
-export const courseSchema = { /* ... */ };
-export const lessonContentSchema = { /* ... */ };
-
 export const generateCourseWithSearch = async (prompt: string) => {
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
@@ -110,6 +106,22 @@ export const generateVoiceGuide = async (text: string): Promise<string> => {
   const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   if (!base64Audio) throw new Error("Audio generation failed");
   return base64Audio;
+};
+
+/**
+ * Transcrit l'audio utilisateur pour en extraire le sujet du cours.
+ */
+export const transcribeAudio = async (base64Data: string, mimeType: string): Promise<string> => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: {
+      parts: [
+        { inlineData: { data: base64Data, mimeType: mimeType } },
+        { text: "Transcris précisément ce qui est dit dans cet audio. Si c'est une demande de création de cours, extrait uniquement le sujet principal. Ne réponds que par la transcription brute sans commentaires." }
+      ]
+    }
+  });
+  return response.text || "";
 };
 
 export const startConversation = async (systemInstruction: string) => {

@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { Sparkles, Search, Globe, ChevronRight, Loader2, BookOpen, Layers } from 'lucide-react';
-import { generateCourseWithSearch } from '../services/geminiService';
+import React, { useState, useRef } from 'react';
+import { Sparkles, Search, Globe, ChevronRight, Loader2, BookOpen, Mic, Square, Volume2 } from 'lucide-react';
+import { generateCourseWithSearch, transcribeAudio } from '../services/geminiService';
 
 interface AIStudioAgentProps {
   onCourseGenerated: (courseData: any) => void;
@@ -10,16 +10,69 @@ interface AIStudioAgentProps {
 export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated }) => {
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState<any>(null);
   const [sources, setSources] = useState<any[]>([]);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const handleGenerate = async () => {
-    if (!topic.trim()) return;
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          setIsTranscribing(true);
+          try {
+            const transcription = await transcribeAudio(base64Audio, 'audio/webm');
+            setTopic(transcription);
+          } catch (error) {
+            console.error("Transcription error:", error);
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      alert("Impossible d'accéder au microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleGenerate = async (overrideTopic?: string) => {
+    const finalTopic = overrideTopic || topic;
+    if (!finalTopic.trim()) return;
     setIsGenerating(true);
     setGeneratedPreview(null);
     
     try {
-      const prompt = `Crée un cours complet sur : ${topic}. Fais des recherches sur les meilleures pratiques actuelles, les experts du domaine et structure le cours en au moins 3 modules logiques.`;
+      const prompt = `Crée un cours complet sur : ${finalTopic}. Fais des recherches sur les meilleures pratiques actuelles, les experts du domaine et structure le cours en au moins 3 modules logiques.`;
       const result = await generateCourseWithSearch(prompt);
       setGeneratedPreview(result.course);
       setSources(result.sources);
@@ -32,33 +85,55 @@ export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated 
 
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-8">
-      <div className="glass p-10 rounded-[3rem] shadow-luxury border border-white/50 text-center">
+      <div className="glass p-10 rounded-[3rem] shadow-luxury border border-white/50 text-center relative overflow-hidden">
+        {isRecording && (
+          <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
+        )}
+        
         <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-primary">
           <Sparkles className="w-10 h-10 animate-pulse" />
         </div>
         <h2 className="text-4xl font-black tracking-tighter mb-4">Chef de Studio IA</h2>
         <p className="text-slate-500 font-medium mb-10 max-w-xl mx-auto">
-          Décrivez votre sujet, et notre agent parcourra le web pour construire la structure pédagogique idéale.
+          Décrivez votre sujet par écrit ou <strong>parlez-moi directement</strong>. Je construirai votre structure pédagogique idéale.
         </p>
 
-        <div className="relative max-w-2xl mx-auto group">
-          <input 
-            type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-            placeholder="Ex: Méditation de pleine conscience pour athlètes de haut niveau..."
-            className="w-full pl-14 pr-32 py-6 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-primary/30 transition-all text-lg font-medium shadow-sm"
-          />
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
+        <div className="relative max-w-2xl mx-auto flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow group">
+            <input 
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+              placeholder={isTranscribing ? "Transcription en cours..." : "Ex: Méditation de pleine conscience..."}
+              className="w-full pl-14 pr-14 py-6 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-primary/30 transition-all text-lg font-medium shadow-sm"
+              disabled={isTranscribing}
+            />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
+            
+            <button 
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5'}`}
+              title={isRecording ? "Arrêter l'enregistrement" : "Parler au Studio Agent"}
+            >
+              {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+            </button>
+          </div>
+
           <button 
-            onClick={handleGenerate}
-            disabled={isGenerating || !topic.trim()}
-            className="absolute right-3 top-3 bottom-3 px-8 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all disabled:opacity-50"
+            onClick={() => handleGenerate()}
+            disabled={isGenerating || isTranscribing || !topic.trim()}
+            className="sm:px-10 py-6 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
           >
-            {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Générer"}
+            {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Générer</>}
           </button>
         </div>
+
+        {isTranscribing && (
+          <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">
+            L'agent analyse votre voix...
+          </p>
+        )}
       </div>
 
       {isGenerating && (
@@ -71,7 +146,7 @@ export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated 
       {generatedPreview && (
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="glass p-8 rounded-[2.5rem] shadow-luxury border border-white/50 mb-8">
-            <div className="flex justify-between items-start mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
               <div>
                 <span className="text-xs font-black uppercase tracking-widest text-primary mb-2 block">Curriculum Généré</span>
                 <h3 className="text-3xl font-black tracking-tight">{generatedPreview.title}</h3>
@@ -79,7 +154,7 @@ export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated 
               </div>
               <button 
                 onClick={() => onCourseGenerated(generatedPreview)}
-                className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all active:scale-95"
+                className="w-full md:w-auto bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all active:scale-95"
               >
                 Importer dans le Builder <ChevronRight className="w-5 h-5" />
               </button>
@@ -120,6 +195,7 @@ export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated 
                       key={idx} 
                       href={src.web?.uri || '#'} 
                       target="_blank" 
+                      rel="noopener noreferrer"
                       className="text-xs font-bold text-primary hover:underline bg-primary/5 px-3 py-1.5 rounded-full"
                     >
                       {src.web?.title || 'Lien externe'}

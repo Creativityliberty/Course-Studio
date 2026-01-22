@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Leaf, Sparkles, BookOpen, User, MessageCircle } from 'lucide-react';
+import { Menu, X, Leaf, Sparkles, BookOpen, User, MessageCircle, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Explicitly define children as optional to handle variations in React 18 / TS environments
+export const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -14,7 +17,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fermer le menu mobile lors d'un changement de route
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location]);
@@ -33,8 +35,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div className="p-2 bg-primary rounded-xl group-hover:rotate-12 transition-transform shadow-lg shadow-primary/20">
               <Leaf className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-slate-900">
-              MINDFULNESS STUDIO
+            <span className="text-xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary to-slate-900 uppercase">
+              Studio
             </span>
           </Link>
 
@@ -49,9 +51,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 {link.name}
               </Link>
             ))}
-            <Link to="/builder" className="bg-primary text-white px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 shadow-lg shadow-primary/20 transition-all">
-              Nouveau Projet
-            </Link>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center gap-4 pl-4 border-l border-slate-200">
+                 <div className="text-right hidden lg:block">
+                   <p className="text-[9px] font-black uppercase tracking-widest text-text-main leading-none mb-1">{user?.name}</p>
+                   <p className="text-[8px] font-bold text-text-muted uppercase tracking-widest">Compte Premium</p>
+                 </div>
+                 <button onClick={logout} className="p-3 bg-slate-100 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all">
+                    <LogOut className="w-4 h-4" />
+                 </button>
+              </div>
+            ) : (
+              <Link to="/login" className="bg-primary text-white px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 shadow-lg shadow-primary/20 transition-all">
+                Se connecter
+              </Link>
+            )}
           </nav>
 
           <button className="md:hidden p-2 text-slate-700" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -68,9 +83,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 {link.name}
               </Link>
             ))}
-            <Link to="/builder" className="bg-primary text-white p-5 rounded-2xl text-center font-black uppercase tracking-widest text-[10px]">
-              Démarrer le Builder
-            </Link>
+            {isAuthenticated ? (
+               <button onClick={logout} className="w-full bg-red-50 text-red-500 p-5 rounded-2xl text-center font-black uppercase tracking-widest text-[10px]">Déconnexion</button>
+            ) : (
+               <Link to="/login" className="bg-primary text-white p-5 rounded-2xl text-center font-black uppercase tracking-widest text-[10px]">Se connecter</Link>
+            )}
           </div>
         )}
       </header>
@@ -85,7 +102,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <div className="w-6 h-6 bg-slate-200 rounded-md"></div>
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Mindfulness Studio 2025</span>
           </div>
-          <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Couture Design System • Powered by AI Intelligence</p>
+          <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Couture Design System • Secure Session via JWT</p>
         </div>
       </footer>
     </div>

@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-// Added Link to imports from react-router-dom
-import { Link } from 'react-router-dom';
-import { Plus, GripVertical, Play, Type, HelpCircle, Save, CheckCircle, Sparkles, Wand2, Layers, MoreVertical, Pencil, Eye, Share2, Copy, X, Check, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, GripVertical, Play, Save, CheckCircle, Sparkles, Pencil, Eye, Share2, Copy, X, Check, Loader2, ArrowLeft } from 'lucide-react';
 import { ContentBlockType, Module, Lesson, Course, CourseStatus } from '../types';
 import { AIStudioAgent } from './AIStudioAgent';
 import { LessonEditor } from './LessonEditor';
@@ -16,6 +15,7 @@ export const CourseBuilder: React.FC = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
   
   const [courseMeta, setCourseMeta] = useState({ 
     id: `c-${Date.now()}`,
@@ -35,7 +35,6 @@ export const CourseBuilder: React.FC = () => {
     }
   ]);
 
-  // Sauvegarde automatique en brouillon
   useEffect(() => {
     const draft = { meta: courseMeta, modules };
     localStorage.setItem('studio_draft', JSON.stringify(draft));
@@ -53,12 +52,10 @@ export const CourseBuilder: React.FC = () => {
       modules: modules
     };
 
-    // Persistance dans la "base de données" simulée
     const existing = JSON.parse(localStorage.getItem('published_courses') || '[]');
     const updated = [newCourse, ...existing.filter((c: any) => c.id !== newCourse.id)];
     localStorage.setItem('published_courses', JSON.stringify(updated));
 
-    // Construction de l'URL réelle pour le partage
     const url = `${window.location.origin}${window.location.pathname}#/share/${newCourse.id}`;
     setPublishedUrl(url);
 
@@ -115,7 +112,7 @@ export const CourseBuilder: React.FC = () => {
     return (
       <div className="container-main py-20 animate-in fade-in duration-500">
         <button onClick={() => setShowAgent(false)} className="mb-12 text-[10px] font-black text-slate-400 hover:text-primary transition-colors flex items-center gap-3 group uppercase tracking-[0.3em]">
-          <span className="group-hover:-translate-x-1 transition-transform">←</span> Retour au Builder manuel
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Retour au Builder manuel
         </button>
         <AIStudioAgent onCourseGenerated={handleAICourseImport} />
       </div>
@@ -123,7 +120,15 @@ export const CourseBuilder: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-20 relative">
+    <div className="max-w-7xl mx-auto px-6 py-32 relative">
+      <button 
+        onClick={() => navigate('/')} 
+        className="mb-12 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-primary transition-all group"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Quitter le Studio
+      </button>
+
       <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-12 mb-32">
         <div className="flex-grow max-w-3xl space-y-6">
           <div className="flex items-center gap-6">
@@ -162,7 +167,7 @@ export const CourseBuilder: React.FC = () => {
         </div>
       </header>
 
-      {/* Modules Builder Grid */}
+      {/* Rest of the component follows... (Modules list, add module, etc) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
         <div className="lg:col-span-8 flex flex-col gap-12">
           {modules.map((module) => (
@@ -217,23 +222,11 @@ export const CourseBuilder: React.FC = () => {
                  <button onClick={() => setShowAgent(true)} className="w-full py-6 bg-primary text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-primary-dark transition-all hover:scale-105">Lancer la génération</button>
                </div>
             </div>
-            
-            <div className="p-12 border border-slate-100 rounded-[3rem] bg-white space-y-6">
-               <h4 className="text-xs font-black uppercase tracking-widest text-slate-300">Statistiques du projet</h4>
-               <div className="flex justify-between items-center py-4 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Modules</span>
-                  <span className="text-lg font-black">{modules.length}</span>
-               </div>
-               <div className="flex justify-between items-center py-4">
-                  <span className="text-sm font-bold text-slate-500">Leçons</span>
-                  <span className="text-lg font-black">{modules.reduce((a,b) => a + b.lessons.length, 0)}</span>
-               </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Share Modal */}
+      {/* Share Modal & Editors */}
       {showShareModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-3xl animate-in fade-in duration-500">
            <div className="max-w-xl w-full bg-white rounded-[5rem] p-20 shadow-2xl relative animate-in zoom-in-95 duration-700 text-center">
@@ -242,7 +235,7 @@ export const CourseBuilder: React.FC = () => {
                  <Share2 className="w-12 h-12" />
               </div>
               <h3 className="editorial-title text-7xl text-slate-900 mb-6 leading-none">C'est public.</h3>
-              <p className="text-xl text-slate-400 font-medium mb-16 leading-relaxed italic">Votre formation est maintenant prête à accueillir ses premiers élèves dans un écrin de luxe.</p>
+              <p className="text-xl text-slate-400 font-medium mb-16 leading-relaxed italic">Votre formation est maintenant prête à accueillir ses premiers élèves.</p>
               
               <div className="p-4 bg-slate-50 rounded-[2.5rem] flex items-center gap-4 border border-slate-100 mb-12 group">
                  <input readOnly value={publishedUrl} className="flex-grow bg-transparent border-none focus:outline-none px-6 text-xs font-bold text-slate-400 truncate" />
