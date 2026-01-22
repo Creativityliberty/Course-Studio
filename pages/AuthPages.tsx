@@ -59,7 +59,8 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="flex justify-end">
-          <Link to="/forgot-password" size="sm" className="text-xs font-bold text-text-muted hover:text-primary transition-colors">Mot de passe oublié ?</Link>
+          {/* Fix: removed unsupported 'size' prop from Link component */}
+          <Link to="/forgot-password" className="text-xs font-bold text-text-muted hover:text-primary transition-colors">Mot de passe oublié ?</Link>
         </div>
 
         <button 
