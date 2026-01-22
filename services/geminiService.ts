@@ -102,6 +102,29 @@ export const generateDetailedLessonContent = async (lessonTitle: string, courseC
   return result.data;
 };
 
+/**
+ * Génère un Quiz intelligent basé sur le contenu de la leçon
+ */
+export const generateQuizForLesson = async (lessonTitle: string, lessonContent: string) => {
+  const prompt = `Génère un quiz d'évaluation de 3 questions pour la leçon "${lessonTitle}". 
+  Contenu de référence : ${lessonContent.substring(0, 2000)}
+  Format JSON: { "questions": [{ "question": "", "options": ["", "", "", ""], "correctIndex": 0 }] }`;
+
+  const result = await withRetryAndFallback(
+    async () => {
+      const resp = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      return safeJsonParse(resp.text);
+    },
+    async () => callOpenRouter(prompt, "google/gemma-3-12b-it:free")
+  );
+
+  return result.data?.questions || [];
+};
+
 export const generateAIImage = async (prompt: string) => {
   try {
     const response = await ai.models.generateContent({
