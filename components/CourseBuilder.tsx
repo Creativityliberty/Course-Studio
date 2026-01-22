@@ -72,7 +72,14 @@ export const CourseBuilder: React.FC = () => {
   };
 
   const handleAICourseImport = (aiData: any) => {
-    setCourseMeta({ ...courseMeta, title: aiData.title, subtitle: aiData.subtitle });
+    // Importation du titre, sous-titre ET de l'image générée par l'IA
+    setCourseMeta({ 
+      ...courseMeta, 
+      title: aiData.title, 
+      subtitle: aiData.subtitle,
+      coverImage: aiData.coverImage || courseMeta.coverImage
+    });
+
     const formattedModules: Module[] = aiData.modules.map((m: any, idx: number) => ({
       id: `ai-m-${idx}`,
       title: m.title,
@@ -132,8 +139,8 @@ export const CourseBuilder: React.FC = () => {
       <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-12 mb-32">
         <div className="flex-grow max-w-3xl space-y-6">
           <div className="flex items-center gap-6">
-             <div className="w-20 h-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center flex-shrink-0 shadow-xl shadow-primary/10">
-                <Pencil className="w-8 h-8" />
+             <div className="w-20 h-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center flex-shrink-0 shadow-xl shadow-primary/10 overflow-hidden">
+                <img src={courseMeta.coverImage} className="w-full h-full object-cover" alt="Cover thumbnail" />
              </div>
              <div className="flex-grow">
                 <input 
@@ -167,7 +174,7 @@ export const CourseBuilder: React.FC = () => {
         </div>
       </header>
 
-      {/* Rest of the component follows... (Modules list, add module, etc) */}
+      {/* List of modules */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
         <div className="lg:col-span-8 flex flex-col gap-12">
           {modules.map((module) => (
@@ -196,7 +203,7 @@ export const CourseBuilder: React.FC = () => {
                         <div className="flex items-center gap-4 mt-2">
                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Masterclass Unité</span>
                            <div className="w-1 h-1 rounded-full bg-slate-200"></div>
-                           <span className="text-[10px] font-black text-primary uppercase tracking-widest">{lesson.blocks.length} Blocs de contenu</span>
+                           <span className="text-[10px] font-black text-primary uppercase tracking-widest">{lesson.blocks.length} Blocs</span>
                         </div>
                       </div>
                     </div>
@@ -218,7 +225,7 @@ export const CourseBuilder: React.FC = () => {
                <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform duration-1000"><Sparkles className="w-40 h-40" /></div>
                <div className="relative z-10 space-y-8">
                  <h3 className="text-4xl font-black leading-none tracking-tighter">Chef de Studio IA</h3>
-                 <p className="text-xl text-slate-400 font-medium leading-relaxed italic">"Laissez l'intelligence artificielle concevoir l'architecture de votre savoir."</p>
+                 <p className="text-xl text-slate-400 font-medium leading-relaxed italic">"Architecture et Identité visuelle générées pour vous."</p>
                  <button onClick={() => setShowAgent(true)} className="w-full py-6 bg-primary text-white rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-primary-dark transition-all hover:scale-105">Lancer la génération</button>
                </div>
             </div>
@@ -226,7 +233,6 @@ export const CourseBuilder: React.FC = () => {
         </div>
       </div>
 
-      {/* Share Modal & Editors */}
       {showShareModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-3xl animate-in fade-in duration-500">
            <div className="max-w-xl w-full bg-white rounded-[5rem] p-20 shadow-2xl relative animate-in zoom-in-95 duration-700 text-center">
@@ -235,7 +241,7 @@ export const CourseBuilder: React.FC = () => {
                  <Share2 className="w-12 h-12" />
               </div>
               <h3 className="editorial-title text-7xl text-slate-900 mb-6 leading-none">C'est public.</h3>
-              <p className="text-xl text-slate-400 font-medium mb-16 leading-relaxed italic">Votre formation est maintenant prête à accueillir ses premiers élèves.</p>
+              <p className="text-xl text-slate-400 font-medium mb-16 leading-relaxed italic">Votre formation est maintenant prête avec son identité visuelle unique.</p>
               
               <div className="p-4 bg-slate-50 rounded-[2.5rem] flex items-center gap-4 border border-slate-100 mb-12 group">
                  <input readOnly value={publishedUrl} className="flex-grow bg-transparent border-none focus:outline-none px-6 text-xs font-bold text-slate-400 truncate" />
