@@ -18,6 +18,13 @@ export interface QuizQuestion {
   correctIndex: number;
 }
 
+export interface Testimonial {
+  name: string;
+  role: string;
+  content: string;
+  avatar: string;
+}
+
 export interface ResourceLink {
   label: string;
   url: string;
@@ -43,7 +50,6 @@ export interface ContentBlock {
     glossary?: GlossaryTerm[];
     imageUrl?: string;
     imagePrompt?: string;
-    // Added audioUrl property to support base64 encoded raw PCM data from Gemini TTS
     audioUrl?: string;
   };
 }
@@ -70,6 +76,7 @@ export interface Course {
   coverImage: string;
   status: CourseStatus;
   modules: Module[];
+  testimonials?: Testimonial[];
 }
 
 export interface ChatMessage {

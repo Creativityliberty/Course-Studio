@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, PlayCircle, Pause, CheckCircle2, Volume2, Info, Book, ExternalLink, Menu, X, Play, Sparkles } from 'lucide-react';
-import { Module, Lesson, ContentBlockType } from '../types';
+import { ChevronLeft, PlayCircle, Pause, CheckCircle2, Volume2, Info, Book, ExternalLink, Menu, X, Play, Sparkles, ArrowRight, RotateCcw, Award } from 'lucide-react';
+import { Module, Lesson, ContentBlockType, QuizQuestion } from '../types';
 
 interface CoursePlayerProps {
   course: { title: string; modules: Module[] };
@@ -37,6 +37,117 @@ async function decodeAudioData(
   return buffer;
 }
 
+const InteractiveQuiz: React.FC<{ questions: QuizQuestion[] }> = ({ questions }) => {
+  const [currentStep, setCurrentStep] = useState<'intro' | 'active' | 'results'>('intro');
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
+  const handleAnswer = (idx: number) => {
+    if (selectedAnswer !== null) return;
+    setSelectedAnswer(idx);
+    const correct = idx === questions[questionIndex].correctIndex;
+    setIsCorrect(correct);
+    if (correct) setScore(s => s + 1);
+
+    setTimeout(() => {
+      if (questionIndex < questions.length - 1) {
+        setQuestionIndex(i => i + 1);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+      } else {
+        setCurrentStep('results');
+      }
+    }, 1500);
+  };
+
+  if (currentStep === 'intro') {
+    return (
+      <div className="p-10 md:p-16 bg-white rounded-[3rem] md:rounded-[4rem] shadow-premium border border-slate-50 text-center space-y-8 md:space-y-12 animate-in zoom-in-95 duration-500">
+        <div className="w-16 h-16 md:w-24 md:h-24 bg-primary/5 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto text-primary shadow-inner">
+           <Book className="w-8 md:w-12 h-8 md:h-12" />
+        </div>
+        <div className="space-y-4">
+           <h3 className="text-3xl md:text-5xl font-black tracking-tighter">Évaluation Interactive</h3>
+           <p className="text-lg md:text-xl text-slate-400 font-medium max-w-xl mx-auto italic leading-relaxed">Validez vos acquis à travers {questions.length} questions stratégiques.</p>
+        </div>
+        <button 
+          onClick={() => setCurrentStep('active')}
+          className="w-full md:w-auto px-12 md:px-20 py-6 md:py-8 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary transition-all shadow-luxury hover:scale-105 active:scale-95"
+        >
+          Démarrer le Quiz
+        </button>
+      </div>
+    );
+  }
+
+  if (currentStep === 'results') {
+    const percentage = Math.round((score / questions.length) * 100);
+    return (
+      <div className="p-10 md:p-20 bg-text-main text-white rounded-[4rem] shadow-luxury text-center space-y-12 animate-in fade-in duration-700">
+         <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
+            <Award className="w-12 h-12 text-primary" />
+         </div>
+         <h3 className="editorial-title text-6xl md:text-8xl">Score : {percentage}%</h3>
+         <p className="text-xl md:text-2xl font-light opacity-60 italic max-w-lg mx-auto">
+           {percentage >= 80 ? "Félicitations ! Vous avez une maîtrise exceptionnelle de cette unité." : "Bel effort. Repassez l'unité pour perfectionner votre compréhension."}
+         </p>
+         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+            <button 
+              onClick={() => {
+                setQuestionIndex(0); setScore(0); setSelectedAnswer(null); setIsCorrect(null); setCurrentStep('intro');
+              }}
+              className="px-10 py-6 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-white/5 transition-all"
+            >
+              <RotateCcw className="w-4 h-4" /> Recommencer
+            </button>
+         </div>
+      </div>
+    );
+  }
+
+  const currentQ = questions[questionIndex];
+
+  return (
+    <div className="p-10 md:p-16 bg-white rounded-[3rem] md:rounded-[4rem] shadow-premium border border-slate-50 space-y-12 animate-in slide-in-from-right-8 duration-500">
+      <div className="flex justify-between items-center">
+         <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Question {questionIndex + 1} / {questions.length}</span>
+         <div className="w-32 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }}></div>
+         </div>
+      </div>
+      
+      <h3 className="text-2xl md:text-4xl font-black tracking-tight leading-tight">{currentQ.question}</h3>
+      
+      <div className="grid gap-4">
+        {currentQ.options.map((opt, idx) => {
+          let stateClass = "border-slate-100 hover:border-primary/30 hover:bg-slate-50";
+          if (selectedAnswer === idx) {
+            stateClass = isCorrect ? "bg-emerald-50 border-emerald-500 text-emerald-900 shadow-lg shadow-emerald-500/5" : "bg-red-50 border-red-500 text-red-900 shadow-lg shadow-red-500/5";
+          } else if (selectedAnswer !== null && idx === currentQ.correctIndex) {
+            stateClass = "bg-emerald-50 border-emerald-500 text-emerald-900";
+          }
+
+          return (
+            <button 
+              key={idx}
+              onClick={() => handleAnswer(idx)}
+              disabled={selectedAnswer !== null}
+              className={`w-full p-8 text-left rounded-[2rem] border-2 font-bold text-lg transition-all flex items-center justify-between group ${stateClass}`}
+            >
+              <span>{opt}</span>
+              {selectedAnswer === idx && (
+                isCorrect ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <X className="w-6 h-6 text-red-500" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) => {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.modules[0]?.lessons[0] || null);
   const [isPlayingAudio, setIsPlayingAudio] = useState<string | null>(null);
@@ -58,7 +169,7 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) =
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const cleanText = (text: string) => text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '').trim();
+  const cleanText = (text: string) => text.replace(/\*\*/g, '').replace(/\*\//g, '').replace(/#/g, '').trim();
 
   const getYouTubeEmbedUrl = (url: string) => {
     if (!url) return null;
@@ -207,17 +318,8 @@ export const CoursePlayer: React.FC<CoursePlayerProps> = ({ course, onClose }) =
                     </div>
                   )}
 
-                  {block.type === ContentBlockType.QUIZ && (
-                    <div className="p-10 md:p-16 bg-white rounded-[3rem] md:rounded-[4rem] shadow-premium border border-slate-50 text-center space-y-8 md:space-y-12">
-                       <div className="w-16 h-16 md:w-24 md:h-24 bg-primary/5 rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto text-primary shadow-inner">
-                          <Book className="w-8 md:w-12 h-8 md:h-12" />
-                       </div>
-                       <div className="space-y-4">
-                          <h3 className="text-3xl md:text-5xl font-black tracking-tighter">Évaluation de l'Unité</h3>
-                          <p className="text-lg md:text-xl text-slate-400 font-medium max-w-xl mx-auto italic leading-relaxed">Préparez-vous à valider vos acquis à travers une série de questions interactives.</p>
-                       </div>
-                       <button className="w-full md:w-auto px-12 md:px-20 py-6 md:py-8 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] hover:bg-primary transition-all shadow-luxury hover:scale-105 active:scale-95">Démarrer le Quiz</button>
-                    </div>
+                  {block.type === ContentBlockType.QUIZ && block.payload?.questions && (
+                    <InteractiveQuiz questions={block.payload.questions} />
                   )}
                 </div>
               ))}
