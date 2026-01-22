@@ -1,7 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { Sparkles, Search, Globe, ChevronRight, Loader2, BookOpen, Mic, Square, Volume2, ImageIcon } from 'lucide-react';
-import { generateCourseWithSearch, transcribeAudio, generateAIImage } from '../services/geminiService';
+import { Sparkles, Loader2, BookOpen, Layers, Play, ImageIcon } from 'lucide-react';
+import { generateCourseWithSearch, generateAIImage, generateDetailedLessonContent } from '../services/geminiService';
+import { ContentBlockType, Module } from '../types';
 
 interface AIStudioAgentProps {
   onCourseGenerated: (courseData: any) => void;
@@ -10,87 +11,102 @@ interface AIStudioAgentProps {
 export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated }) => {
   const [topic, setTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState<any>(null);
-  const [sources, setSources] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const [progress, setProgress] = useState(0);
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = async () => {
-          const base64Audio = (reader.result as string).split(',')[1];
-          setIsTranscribing(true);
-          try {
-            const transcription = await transcribeAudio(base64Audio, 'audio/webm');
-            setTopic(transcription);
-          } catch (error) {
-            console.error("Transcription error:", error);
-          } finally {
-            setIsTranscribing(false);
-          }
-        };
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Error accessing microphone:", err);
-      alert("Impossible d'accéder au microphone.");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const handleGenerate = async (overrideTopic?: string) => {
-    const finalTopic = overrideTopic || topic;
-    if (!finalTopic.trim()) return;
+  const handleDeepGeneration = async () => {
+    if (!topic.trim()) return;
     setIsGenerating(true);
     setGeneratedPreview(null);
-    setStatusMessage("L'IA explore le web pour structurer votre savoir...");
+    setProgress(5);
     
     try {
-      const prompt = `Crée un cours complet sur : ${finalTopic}. Fais des recherches sur les meilleures pratiques actuelles, les experts du domaine et structure le cours en au moins 3 modules logiques.`;
-      const result = await generateCourseWithSearch(prompt);
+      setStatusMessage("Phase 1 : Architecture stratégique...");
+      const structureResult = await generateCourseWithSearch(`Crée un cours structuré sur : ${topic}. Modules et leçons uniquement.`);
       
-      // Nouvelle étape : Génération de l'image de couverture
-      setStatusMessage("Création de l'univers visuel de votre masterclass...");
-      try {
-        const aiImage = await generateAIImage(result.course.title);
-        result.course.coverImage = aiImage;
-      } catch (imgError) {
-        console.warn("Échec de la génération d'image IA, utilisation d'une image par défaut.", imgError);
-        result.course.coverImage = "https://images.unsplash.com/photo-1499209974431-9dac3adaf471?auto=format&fit=crop&q=80&w=2000";
+      if (!structureResult.course || !structureResult.course.title) {
+        throw new Error("Impossible de générer la structure.");
       }
 
-      setGeneratedPreview(result.course);
-      setSources(result.sources);
+      setStatusMessage("Création de l'identité visuelle...");
+      const aiImage = await generateAIImage(structureResult.course.title);
+      structureResult.course.coverImage = aiImage;
+      setProgress(20);
+
+      const fullModules: Module[] = [];
+      const rawModules = structureResult.course.modules || [];
+      const totalLessons = rawModules.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0);
+      let lessonsProcessed = 0;
+
+      for (const mod of rawModules) {
+        const enrichedLessons = [];
+        for (const less of (mod.lessons || [])) {
+          setStatusMessage(`Rédaction profonde : ${less.title}...`);
+          
+          // Deliberate pacing to respect API rate limits (3 seconds between requests)
+          await new Promise(r => setTimeout(r, 3000));
+
+          try {
+            const details = await generateDetailedLessonContent(less.title, structureResult.course.title);
+            enrichedLessons.push({
+              id: `l-${Date.now()}-${lessonsProcessed}`,
+              title: less.title,
+              blocks: [
+                { 
+                  id: `b-txt-${Date.now()}`, 
+                  type: ContentBlockType.TEXT, 
+                  title: "L'Essentiel du Savoir", 
+                  content: details.textContent || "Contenu stratégique en cours de finalisation par l'IA..." 
+                },
+                { 
+                  id: `b-vid-${Date.now()}`, 
+                  type: ContentBlockType.VIDEO, 
+                  title: "Ressource Vidéo Sélectionnée", 
+                  content: "", 
+                  payload: { url: details.videoUrl || "https://www.youtube.com/watch?v=dQw4w9WgXcQ" } 
+                }
+              ]
+            });
+          } catch (lessonError) {
+            console.warn(`Final failure to enrich lesson: ${less.title}`, lessonError);
+            // Fallback content so the process continues
+            enrichedLessons.push({
+              id: `l-${Date.now()}-${lessonsProcessed}`,
+              title: less.title,
+              blocks: [
+                { 
+                  id: `b-txt-${Date.now()}`, 
+                  type: ContentBlockType.TEXT, 
+                  title: "Note de l'Agent Studio", 
+                  content: "Cette unité a été générée partiellement suite à une forte affluence sur les serveurs IA. Vous pouvez la compléter manuellement dans l'éditeur." 
+                }
+              ]
+            });
+          }
+          
+          lessonsProcessed++;
+          setProgress(20 + (80 * (lessonsProcessed / totalLessons)));
+        }
+        
+        fullModules.push({
+          id: `m-${Date.now()}-${fullModules.length}`,
+          title: mod.title,
+          order: fullModules.length + 1,
+          lessons: enrichedLessons
+        });
+      }
+
+      const finalCourse = {
+        ...structureResult.course,
+        modules: fullModules
+      };
+
+      setGeneratedPreview(finalCourse);
     } catch (error) {
-      alert("Une erreur est survenue pendant la recherche agentique.");
+      console.error(error);
+      const errorMessage = typeof error === 'string' ? error : (error?.message || "Erreur inconnue");
+      alert(`La génération a été ralentie ou interrompue : ${errorMessage}. Veuillez réessayer avec un sujet plus spécifique ou patientez quelques minutes.`);
     } finally {
       setIsGenerating(false);
       setStatusMessage("");
@@ -98,144 +114,95 @@ export const AIStudioAgent: React.FC<AIStudioAgentProps> = ({ onCourseGenerated 
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-8">
-      <div className="glass p-10 rounded-[3rem] shadow-luxury border border-white/50 text-center relative overflow-hidden">
-        {isRecording && (
-          <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
-        )}
-        
-        <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-primary">
-          <Sparkles className="w-10 h-10 animate-pulse" />
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-12">
+      <div className="glass p-16 rounded-[4rem] shadow-luxury border border-white/50 text-center relative overflow-hidden">
+        <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 text-primary">
+          <Sparkles className="w-12 h-12" />
         </div>
-        <h2 className="text-4xl font-black tracking-tighter mb-4">Chef de Studio IA</h2>
-        <p className="text-slate-500 font-medium mb-10 max-w-xl mx-auto">
-          Décrivez votre sujet. Je construirai votre structure pédagogique et votre <strong>identité visuelle</strong>.
+        <h2 className="editorial-title text-6xl text-slate-900 mb-6">Deep Studio IA</h2>
+        <p className="text-2xl text-slate-500 font-medium mb-12 max-w-2xl mx-auto italic opacity-60 leading-relaxed">
+          Générez une masterclass complète en un clic : <br />structure, rédaction, vidéos et identité visuelle.
         </p>
 
-        <div className="relative max-w-2xl mx-auto flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-grow group">
+        <div className="relative max-w-3xl mx-auto flex flex-col gap-6">
+          <div className="relative">
             <input 
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-              placeholder={isTranscribing ? "Transcription en cours..." : "Ex: Masterclass sur le design durable..."}
-              className="w-full pl-14 pr-14 py-6 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-primary/30 transition-all text-lg font-medium shadow-sm"
-              disabled={isTranscribing}
+              placeholder="Ex: Maîtriser le prompt engineering pour le luxe..."
+              className="w-full pl-10 pr-20 py-8 bg-white border-2 border-slate-100 rounded-[2.5rem] focus:outline-none focus:border-primary/30 transition-all text-xl font-medium shadow-inner"
             />
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
-            
-            <button 
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5'}`}
-              title={isRecording ? "Arrêter l'enregistrement" : "Parler au Studio Agent"}
-            >
-              {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
-            </button>
+            <Layers className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-300 w-8 h-8" />
           </div>
 
           <button 
-            onClick={() => handleGenerate()}
-            disabled={isGenerating || isTranscribing || !topic.trim()}
-            className="sm:px-10 py-6 bg-primary text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
+            onClick={handleDeepGeneration}
+            disabled={isGenerating || !topic.trim()}
+            className="w-full py-8 bg-[#4f46e5] text-white rounded-[2.5rem] font-black uppercase tracking-[0.4em] text-[11px] flex items-center justify-center gap-4 hover:bg-primary-dark transition-all disabled:opacity-50 shadow-2xl shadow-primary/20 active:scale-95"
           >
-            {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Générer</>}
+            {isGenerating ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Sparkles className="w-5 h-5" /> Générer la Formation Complète</>}
           </button>
         </div>
-
-        {isTranscribing && (
-          <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">
-            L'agent analyse votre voix...
-          </p>
-        )}
       </div>
 
       {isGenerating && (
-        <div className="flex flex-col items-center justify-center py-20 animate-pulse text-center">
-          <div className="relative">
-            <Globe className="w-12 h-12 text-primary animate-spin mb-4" />
-            <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-primary animate-bounce" />
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-8 animate-in fade-in duration-700">
+          <div className="w-full max-w-md h-2 bg-slate-100 rounded-full overflow-hidden">
+             <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs max-w-xs">{statusMessage}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.4em] text-primary animate-pulse">{statusMessage}</p>
+          <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
+            Note: Nous cadençons les appels IA pour garantir la qualité et respecter les quotas de service.
+          </p>
         </div>
       )}
 
       {generatedPreview && (
-        <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="glass rounded-[3rem] shadow-luxury border border-white/50 mb-8 overflow-hidden">
-            {/* Visual Preview of the AI Generated Cover */}
-            <div className="h-64 relative group overflow-hidden">
-               <img src={generatedPreview.coverImage} className="w-full h-full object-cover transition-transform duration-[3000ms] group-hover:scale-110" alt="Generated Cover" />
-               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
-               <div className="absolute bottom-8 left-10 flex items-center gap-3">
-                  <div className="p-2 bg-white/20 backdrop-blur-xl rounded-lg text-white">
-                    <ImageIcon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Identité visuelle générée par IA</span>
-               </div>
-            </div>
-
-            <div className="p-10">
-              <div className="flex flex-col md:flex-row justify-between items-start mb-12 gap-6">
-                <div>
-                  <span className="text-xs font-black uppercase tracking-widest text-primary mb-2 block">Architecture Studio</span>
-                  <h3 className="text-3xl font-black tracking-tight mb-2">{generatedPreview.title}</h3>
-                  <p className="text-slate-500 font-medium italic">"{generatedPreview.subtitle}"</p>
-                </div>
-                <button 
-                  onClick={() => onCourseGenerated(generatedPreview)}
-                  className="w-full md:w-auto bg-primary text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-primary-dark shadow-xl shadow-primary/20 transition-all active:scale-95"
-                >
-                  Déployer le Projet <ChevronRight className="w-5 h-5" />
-                </button>
+        <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
+           <div className="glass rounded-[4rem] shadow-luxury border border-white/50 overflow-hidden">
+              <div className="h-80 relative">
+                 <img src={generatedPreview.coverImage} className="w-full h-full object-cover" alt="Preview" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
+                 <div className="absolute bottom-12 left-12">
+                    <span className="px-4 py-2 bg-primary/20 backdrop-blur-xl rounded-full text-[9px] font-black uppercase tracking-widest text-white mb-4 inline-block">Projet Complet Prêt</span>
+                    <h3 className="editorial-title text-6xl text-white">{generatedPreview.title}</h3>
+                 </div>
               </div>
+              
+              <div className="p-16">
+                 <button 
+                   onClick={() => onCourseGenerated(generatedPreview)}
+                   className="w-full py-8 bg-[#4f46e5] text-white rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.4em] mb-16 shadow-2xl hover:scale-105 transition-all"
+                 >
+                   Déployer vers l'éditeur professionnel
+                 </button>
 
-              <div className="space-y-6">
-                {generatedPreview.modules.map((mod: any, i: number) => (
-                  <div key={i} className="bg-white/50 border border-slate-100 rounded-3xl p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                        {i + 1}
-                      </div>
-                      <h4 className="font-bold text-lg text-slate-800">{mod.title}</h4>
-                    </div>
-                    <div className="grid gap-3">
-                      {mod.lessons.map((less: any, j: number) => (
-                        <div key={j} className="flex items-center justify-between p-4 bg-white border border-slate-50 rounded-2xl text-sm font-medium text-slate-600">
-                           <div className="flex items-center gap-3">
-                              <BookOpen className="w-4 h-4 text-primary/40" />
-                              {less.title}
-                           </div>
-                           <span className="px-3 py-1 bg-slate-50 rounded-lg text-[10px] font-black uppercase text-slate-400">{less.contentType}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {sources.length > 0 && (
-                <div className="mt-12 pt-8 border-t border-slate-100">
-                  <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Globe className="w-3 h-3" /> Sources consultées par l'agent
-                  </h5>
-                  <div className="flex flex-wrap gap-4">
-                    {sources.map((src: any, idx: number) => (
-                      <a 
-                        key={idx} 
-                        href={src.web?.uri || '#'} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-primary hover:underline bg-primary/5 px-3 py-1.5 rounded-full"
-                      >
-                        {src.web?.title || 'Lien externe'}
-                      </a>
+                 <div className="grid gap-10">
+                    {generatedPreview.modules?.map((m: any, idx: number) => (
+                       <div key={idx} className="bg-slate-50/50 p-10 rounded-[3rem] border border-slate-100">
+                          <h4 className="text-2xl font-black mb-6 tracking-tight flex items-center gap-4">
+                             <span className="text-primary opacity-30 italic">0{idx + 1}</span> {m.title}
+                          </h4>
+                          <div className="space-y-4">
+                             {m.lessons?.map((l: any, lidx: number) => (
+                                <div key={lidx} className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100">
+                                   <div className="flex items-center gap-4">
+                                      <BookOpen className="w-5 h-5 text-slate-300" />
+                                      <span className="font-bold text-slate-700">{l.title}</span>
+                                   </div>
+                                   <div className="flex gap-2">
+                                      {l.blocks?.some((b: any) => b.type === 'video') && <Play className="w-4 h-4 text-primary" />}
+                                      {l.blocks?.some((b: any) => b.type === 'text') && <BookOpen className="w-4 h-4 text-emerald-400" />}
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+                 </div>
+              </div>
+           </div>
         </div>
       )}
     </div>
